@@ -588,7 +588,7 @@ double newton(const DnMat& G, const DnVec& u, double x, int d, int maxiter, int&
 
         while(abs(jac) > eps && it < maxiter)
         {
-                x_curr = x_curr - jac_h(G,u,x_curr,d)/hess_h(G,u,x_curr,d);
+                x_curr = x_curr - 0.90*jac_h(G,u,x_curr,d)/hess_h(G,u,x_curr,d);
                 jac = jac_h(G,u,x_curr,d);
                 it++;
         }
