@@ -1,0 +1,28 @@
+Low rank solvers
+
+####################################
+
+benchmark/ : folder with the random instances used in the paper.
+
+####################################
+
+code/ : folder that contains the code. 
+
+Usage : ./mixing INPUT_INSTANCE OPTIONS
+OPTIONS :
+	solver : "1" for LR-LAS
+		 "2" for LR-BCD
+
+	rank : "-1" for running with rank r = ceil(sqrt(2n))
+	       "k" for running with rank r = k
+
+	rounding : "k" for computing the best integer solution value
+	           with k rounding schemes
+
+example : ./mixing ../benchmark/rd50-3-sparse-0.wcsp 1 -1 50
+
+OUTPUT :
+	[Upper bound value] [lower bound value] [cpu time] [Best upper bound value after rounding schemes] [cpu time rounding schemes]
+
+Eigen3 must be installed and the path to eigen3 must be updated in the makefile.  
+		  
