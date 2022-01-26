@@ -929,12 +929,9 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                         size_t size_i = rdAssignment[i].size();
                         size_t value = pVar[i]->getValue();
                         double objBase = initial - deltaObjVar(w, i);
-                        cout << "var " << i << " val " << value << std::endl;
-                        cout << "Initial " << initial << std::endl;
-                        cout << "Recomputed " << objectiveFunction(w) << std::endl;
 
                         rdAssignment[i][value] = 0;
-                        int indMin = 0;
+                        int indMin = value;
 
                         for (size_t j = 0; j != size_i; j++)
                         {
@@ -944,12 +941,8 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                                         w.assignmentUpdate(rdAssignment);
                                         curr_val = objBase + deltaObjVar(w, i);
 
-                                        cout << "current " << curr_val << " for value " << j << std::endl;
-                                        cout << "recomputed " << objectiveFunction(w) << std::endl;
-
                                         if (curr_val < min)
                                         {
-                                                cout << "Better " << curr_val << std::endl;
                                                 min = curr_val;
                                                 indMin = j;
                                                 changed = true;
@@ -959,6 +952,7 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                         }
                         initial = min;
                         rdAssignment[i][indMin] = 1;
+                        w.assignmentUpdate(rdAssignment);
                 }
         }
         return min + w.getLowerBound();
