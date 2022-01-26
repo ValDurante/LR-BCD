@@ -1,17 +1,18 @@
 # Variables to control Makefile operation
  
 CXX = g++
-CXXFLAGS = -Wall -g
-LIB = -I/EigenPath
+#CXXFLAGS = -Wall -g
+CXXFLAGS = -Wall -O3 -fomit-frame-pointer
+#CXXFLAGS = -Wall -O3 -fomit-frame-pointer -march=native
  
 mixing: mixing.o wcsp.o wcspfun.o wcspvar.o
-	$(CXX) $(CXXFLAGS) $(LIB) -o mixing mixing.o wcsp.o wcspfun.o wcspvar.o
+	$(CXX) $(CXXFLAGS) -o mixing mixing.o wcsp.o wcspfun.o wcspvar.o
  
 mixing.o: mixing.cpp wcsp.h wcspreader.hh wcspfun.h wcspvar.h
-	$(CXX) $(CXXFLAGS) $(LIB) -c mixing.cpp
+	$(CXX) $(CXXFLAGS) -c mixing.cpp
  
 wcsp.o: wcsp.cpp wcsp.h wcspfun.h wcspvar.h
-	$(CXX) $(CXXFLAGS) $(LIB) -c wcsp.cpp
+	$(CXX) $(CXXFLAGS) -c wcsp.cpp
 
 wcspfun.o: wcspfun.cpp wcspfun.h wcspvar.h
 	$(CXX) $(CXXFLAGS) -c wcspfun.cpp

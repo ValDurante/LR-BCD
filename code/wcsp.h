@@ -1,7 +1,7 @@
 //wcsp.h
 #include <vector>
 #include <memory>
-#include <Eigen/Sparse>
+#include <eigen3/Eigen/Sparse>
 #include "wcspfun.h"
 #include "wcspvar.h"
 
@@ -21,21 +21,21 @@ class wcsp
 private:
     double _ub;
     double _lb;
-    vector<wcspvar*> _variables; 
-    vector<wcspfun*> _functions;
+    vector<wcspvar *> _variables;
+    vector<wcspfun *> _functions;
 
 public:
-    wcsp(double, double, vector<wcspvar*>, vector<wcspfun*>);
+    wcsp(double, double, vector<wcspvar *>, vector<wcspfun *>);
     wcsp();
     ~wcsp(void);
     double getUpperBound();
     double getLowerBound();
     void setUpperBound(double lb);
-    const vector<wcspvar*>&  getVariables();
-    const vector<wcspfun*>& getFunctions();
+    const vector<wcspvar *> &getVariables();
+    const vector<wcspfun *> &getFunctions();
     size_t getSDPSize();
     size_t getRank();
-    void assignmentUpdate(const vector<vector<int>>& assignment);
+    void assignmentUpdate(const vector<vector<int>> &assignment);
     void resetWcsp();
     vector<int> domains();
     vector<int> relatDomains();
@@ -48,7 +48,6 @@ public:
     DnMat dualMat();
     double penaltyCoeff();
     vector<int> validRows();
-    
 };
 
 #endif

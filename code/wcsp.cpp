@@ -1,12 +1,11 @@
 //wcsp.cpp
 #include <iostream>
 #include <math.h>
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Sparse>
+#include <eigen3/Eigen/Dense>
 #include "wcspfun.h"
 #include "wcspvar.h"
 #include "wcsp.h"
-
 
 using namespace std;
 
@@ -15,7 +14,7 @@ typedef Eigen::SparseVector<double> SpVec;
 typedef Eigen::VectorXd DnVec;
 typedef Eigen::MatrixXd DnMat;
 
-wcsp::wcsp(double ub, double lb, vector<wcspvar*> variables, vector<wcspfun*> functions)
+wcsp::wcsp(double ub, double lb, vector<wcspvar *> variables, vector<wcspfun *> functions)
 {
     _ub = ub;
     _lb = lb;
@@ -27,13 +26,12 @@ wcsp::wcsp()
 {
     _ub = 0;
     _lb = 0;
-    _variables = vector<wcspvar*>();
-    _functions = vector<wcspfun*>();
+    _variables = vector<wcspvar *>();
+    _functions = vector<wcspfun *>();
 }
 
 wcsp::~wcsp()
 {
-
 }
 
 double wcsp::getUpperBound()
@@ -51,12 +49,12 @@ void wcsp::setUpperBound(double lb)
     _lb = lb;
 }
 
-const vector<wcspvar*>& wcsp::getVariables()
+const vector<wcspvar *> &wcsp::getVariables()
 {
     return _variables;
 }
 
-const vector<wcspfun*>& wcsp::getFunctions()
+const vector<wcspfun *> &wcsp::getFunctions()
 {
     return _functions;
 }
@@ -66,9 +64,9 @@ size_t wcsp::getSDPSize()
     size_t d = 0;
     size_t nbVar = _variables.size();
 
-    for(size_t i = 0; i != nbVar; ++i)
+    for (size_t i = 0; i != nbVar; ++i)
     {
-        d = d + _variables[i]->relatDomainSize();        //relatDomainSize() for the nodes or domainSize() for the root
+        d = d + _variables[i]->relatDomainSize(); //relatDomainSize() for the nodes or domainSize() for the root
     }
 
     return d;
@@ -77,12 +75,12 @@ size_t wcsp::getSDPSize()
 size_t wcsp::getRank()
 {
     size_t n = this->getSDPSize() + 1;
-    size_t k = ceil(sqrt(2*n));
+    size_t k = ceil(sqrt(2 * n));
 
     return k;
 }
 
-void wcsp::assignmentUpdate(const vector<vector<int>>& assignment)
+void wcsp::assignmentUpdate(const vector<vector<int>> &assignment)
 {
     size_t nbVar = assignment.size();
 
@@ -95,7 +93,7 @@ void wcsp::assignmentUpdate(const vector<vector<int>>& assignment)
 void wcsp::resetWcsp()
 {
     size_t nbVar = _variables.size();
-    for(size_t i = 0; i != nbVar; i++)
+    for (size_t i = 0; i != nbVar; i++)
     {
         _variables[i]->resetVariable();
     }
@@ -110,9 +108,9 @@ vector<int> wcsp::domains()
     int acc = 0;
     vector<int> dom;
     dom.push_back(acc);
-    const vector<wcspvar*>& pVar = this->getVariables();
+    const vector<wcspvar *> &pVar = this->getVariables();
 
-    for(size_t i = 0; i != (pVar.size()); i++)
+    for (size_t i = 0; i != (pVar.size()); i++)
     {
         acc = acc + pVar[i]->domainSize();
         dom.push_back(acc);
@@ -126,11 +124,11 @@ vector<int> wcsp::relatDomains()
     int acc = 0;
     vector<int> dom;
     dom.push_back(acc);
-    const vector<wcspvar*>& pVar = this->getVariables();
+    const vector<wcspvar *> &pVar = this->getVariables();
 
-    for(size_t i = 0; i != (pVar.size()); i++)
+    for (size_t i = 0; i != (pVar.size()); i++)
     {
-        if(!pVar[i]->isAssigned())
+        if (!pVar[i]->isAssigned())
         {
             acc = acc + pVar[i]->relatDomainSize();
             dom.push_back(acc);
@@ -152,19 +150,19 @@ SpVec wcsp::unaryCostVector()
     SpVec U(d);
     U.reserve(d);
 
-    for(size_t i = 0; i != _functions.size(); i++)
+    for (size_t i = 0; i != _functions.size(); i++)
     {
-        const vector<int>& pInd = _functions[i]->getIndices();
+        const vector<int> &pInd = _functions[i]->getIndices();
 
         //check if the function is a unary cost function
-        if(pInd.size() == 1)
+        if (pInd.size() == 1)
         {
             int ind = domains[pInd[0]];
             vector<double> costs = _functions[i]->getCosts();
 
             for (size_t j = 0; j != costs.size(); j++)
             {
-                if(costs[j] != 0)
+                if (costs[j] != 0)
                 {
                     U.insert(ind + j) = costs[j];
                 }
@@ -180,20 +178,20 @@ SpMat wcsp::binaryCostMatrix()
     size_t d = this->getSDPSize();
     vector<int> domains = this->domains();
 
-    SpMat C(d,d);
+    SpMat C(d, d);
     size_t domSize = _variables[0]->domainSize();
     size_t nbFun = _functions.size();
-    int estimation_of_entries = round(domSize*domSize*nbFun);
+    int estimation_of_entries = round(domSize * domSize * nbFun);
     C.reserve(estimation_of_entries);
 
-    for(size_t i = 0; i != _functions.size(); i++)
+    for (size_t i = 0; i != _functions.size(); i++)
     {
-        const vector<int>& pInd = _functions[i]->getIndices();
+        const vector<int> &pInd = _functions[i]->getIndices();
 
         //check if the function is a binary cost function
-        if(pInd.size() == 2)
+        if (pInd.size() == 2)
         {
-            const vector<wcspvar*>& scope = _functions[i]->getScope();
+            const vector<wcspvar *> &scope = _functions[i]->getScope();
             size_t domY = scope[1]->domainSize();
             int indX = domains[pInd[0]];
             int indY = domains[pInd[1]];
@@ -201,15 +199,15 @@ SpMat wcsp::binaryCostMatrix()
 
             for (size_t j = 0; j != costs.size(); j++)
             {
-                if(costs[j] != 0)
+                if (costs[j] != 0)
                 {
-                    int q = j/domY;
-                    int r = j%domY;
+                    int q = j / domY;
+                    int r = j % domY;
                     C.insert(indX + q, indY + r) = costs[j];
                 }
             }
         }
-    } 
+    }
 
     return C;
 }
@@ -227,23 +225,24 @@ SpMat wcsp::SDPmat()
     SpVec U = this->unaryCostVector();
     SpMat C = this->binaryCostMatrix();
     size_t d = this->getSDPSize();
-    SpMat Q(d+1,d+1);
+    SpMat Q(d + 1, d + 1);
 
     size_t domSize = _variables[0]->domainSize();
     size_t nbFun = _functions.size();
-    int estimation_of_entries = round(domSize*domSize*nbFun);
+    int estimation_of_entries = round(domSize * domSize * nbFun);
     Q.reserve(estimation_of_entries);
 
-    C =  0.5*(SpMat(C.transpose()) + C);
-    SpMat C_m = 0.25*C; 
+    C = 0.5 * (SpMat(C.transpose()) + C);
+    SpMat C_m = 0.25 * C;
     DnVec e = DnVec::Ones(d);
-    DnVec U_m = 0.5*(U + C*e);
-    U_m = 0.5*U_m;
+    DnVec U_m = 0.5 * (U + C * e);
+    U_m = 0.5 * U_m;
 
-    for (int k=0; k<C_m.outerSize(); ++k){
-        for (SpMat::InnerIterator it(C_m,k); it; ++it)
+    for (int k = 0; k < C_m.outerSize(); ++k)
+    {
+        for (SpMat::InnerIterator it(C_m, k); it; ++it)
         {
-            Q.insert(it.row(),it.col()) = it.value();
+            Q.insert(it.row(), it.col()) = it.value();
         }
     }
 
@@ -251,8 +250,8 @@ SpMat wcsp::SDPmat()
     {
         if (U_m(i) != 0)
         {
-            Q.insert(i,d) = U_m(i);
-            Q.insert(d,i) = U_m(i);
+            Q.insert(i, d) = U_m(i);
+            Q.insert(d, i) = U_m(i);
         }
     }
 
@@ -265,13 +264,13 @@ SpMat wcsp::constMat()
     int d = this->getSDPSize();
     vector<int> domains = this->domains();
 
-    SpMat A(N,d);
+    SpMat A(N, d);
     A.reserve(d);
 
-    for(size_t i = 0; i != domains.size() - 1; i++)
+    for (size_t i = 0; i != domains.size() - 1; i++)
     {
-        for(int j = domains[i]; j != domains[i+1]; j++)
-        A.insert(i,j) = 1;
+        for (int j = domains[i]; j != domains[i + 1]; j++)
+            A.insert(i, j) = 1;
     }
 
     return A;
@@ -288,27 +287,27 @@ DnVec wcsp::rhs()
 // build gangster operator constraint matrix
 DnMat wcsp::gOperator()
 {
-	int d = this->getSDPSize();
-	SpMat A = this->constMat();
-	DnMat M(d+1,d+1);
+    int d = this->getSDPSize();
+    SpMat A = this->constMat();
+    DnMat M(d + 1, d + 1);
 
-	DnMat AA = DnMat(A.transpose())*A;
-	DnVec e = DnVec::Ones(d);
+    DnMat AA = DnMat(A.transpose()) * A;
+    DnVec e = DnVec::Ones(d);
 
-	DnVec diag = AA.diagonal();
-	DnMat AAdiag = diag.asDiagonal();
-	DnMat H = AA - AAdiag;
+    DnVec diag = AA.diagonal();
+    DnMat AAdiag = diag.asDiagonal();
+    DnMat H = AA - AAdiag;
 
-	DnMat G = 0.25*H;
-	DnVec q = 0.5*H*e;
-	double r = 0.25*e.transpose()*H*e;
+    DnMat G = 0.25 * H;
+    DnVec q = 0.5 * H * e;
+    double r = 0.25 * e.transpose() * H * e;
 
-	M.block(0,0,d,d) = G;
-	M.block(0,d,d,1) = 0.5*q;
-	M.block(d,0,1,d) = 0.5*q.transpose();
-	M(d,d) = r;
+    M.block(0, 0, d, d) = G;
+    M.block(0, d, d, 1) = 0.5 * q;
+    M.block(d, 0, 1, d) = 0.5 * q.transpose();
+    M(d, d) = r;
 
-	return M; 
+    return M;
 }
 
 // build dual mat
@@ -321,32 +320,29 @@ DnMat wcsp::dualMat()
     SpMat A = this->constMat();
     SpVec U = this->unaryCostVector();
     SpMat C = this->binaryCostMatrix();
-    DnMat Q(d+1,d+1);
+    DnMat Q(d + 1, d + 1);
 
     DnVec e = DnVec::Ones(d);
-    DnVec temp = 0.5*A*e;
+    DnVec temp = 0.5 * A * e;
     //DnVec temp = A*e;
     b = b - temp;
-    A = 0.5*A;
-    
+    A = 0.5 * A;
 
-    C =  0.5*(SpMat(C.transpose()) + C);
-    SpMat C_m = 0.25*C; 
-    DnVec U_m = 0.5*(U + C*e);
+    C = 0.5 * (SpMat(C.transpose()) + C);
+    SpMat C_m = 0.25 * C;
+    DnVec U_m = 0.5 * (U + C * e);
     //U_m = 0.5*U_m;
 
- 
-    DnMat AA = DnMat(A.transpose())*A;
-    DnMat F = (2*pc + 1)*AA + C_m;
+    DnMat AA = DnMat(A.transpose()) * A;
+    DnMat F = (2 * pc + 1) * AA + C_m;
     double bb = b.dot(b);
-    DnVec bA = 2*(2*pc + 1)*(b.transpose()*A).transpose();
-    DnVec c = 0.5*(U_m - bA);
+    DnVec bA = 2 * (2 * pc + 1) * (b.transpose() * A).transpose();
+    DnVec c = 0.5 * (U_m - bA);
 
-
-    Q.block(0,0,d,d) = F;
-    Q.block(0,d,d,1) = c;
-    Q.block(d,0,1,d) = c.transpose();
-    Q(d,d) = (2*pc + 1)*bb;
+    Q.block(0, 0, d, d) = F;
+    Q.block(0, d, d, 1) = c;
+    Q.block(d, 0, 1, d) = c.transpose();
+    Q(d, d) = (2 * pc + 1) * bb;
 
     return Q;
 }
@@ -355,12 +351,12 @@ DnMat wcsp::dualMat()
 double wcsp::penaltyCoeff()
 {
     double penaltyCoeff = 0;
-    const vector<wcspfun*>& pfun = this->getFunctions();
+    const vector<wcspfun *> &pfun = this->getFunctions();
     size_t nbFun = pfun.size();
 
-    for(size_t i=0; i < nbFun; i ++)
+    for (size_t i = 0; i < nbFun; i++)
     {
-        penaltyCoeff = penaltyCoeff + pfun[i]->getMaxInit();       //pfun[i]->getMax();
+        penaltyCoeff = penaltyCoeff + pfun[i]->getMaxInit(); //pfun[i]->getMax();
     }
 
     return penaltyCoeff;
@@ -368,14 +364,14 @@ double wcsp::penaltyCoeff()
 
 vector<int> wcsp::validRows()
 {
-    const vector<wcspvar*>& pVar = this->getVariables();
+    const vector<wcspvar *> &pVar = this->getVariables();
     vector<int> domains = this->domains();
     vector<int> vRows;
 
-    for(size_t i = 0; i != pVar.size(); i++)
+    for (size_t i = 0; i != pVar.size(); i++)
     {
         int curr_dom = domains[i];
-        if(pVar[i]->isAssigned())
+        if (pVar[i]->isAssigned())
         {
             continue;
         }
@@ -393,5 +389,5 @@ vector<int> wcsp::validRows()
         }
     }
 
-    return vRows; 
+    return vRows;
 }
