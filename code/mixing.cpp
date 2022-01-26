@@ -532,7 +532,7 @@ double currentDelta(const DnMat &G, const DnMat &V, const DnMat &Vb, int first,
         double currDelta = 0;
         for (int i = first; i != last; i++)
         {
-                currDelta += (V.col(i) - Vb.col(i - first)).dot(G.col(i - first));
+                currDelta += 2*(V.col(i) - Vb.col(i - first)).dot(G.col(i - first));
         }
 
         return currDelta;
@@ -654,7 +654,7 @@ DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
 
                 BCD_it++;
 
-                if (delta < tol)
+                if (delta < tol*1e9)
                 {
                         break;
                 }
@@ -711,7 +711,7 @@ DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 
                 it++;
 
-                if (delta < tol)
+                if (delta < tol*1e9)
                 {
                         break;
                 }
@@ -998,9 +998,9 @@ int main(int argc, char *argv[])
                         cout << "\nPenalty coefficient" << rho;
                 }
 
-                auto begin = chrono::high_resolution_clock::now();
+                std::clock_t c_start = std::clock();
                 DnMat V = doMixing(w, Q, tol, maxiter, k);
-                auto end = chrono::high_resolution_clock::now();
+                std::clock_t c_end = std::clock();
 
                 double lb = evalFun(Q, V) + bias(w);
                 vector<vector<int>> rdAssignment = rounding(V, w, k);
@@ -1024,14 +1024,14 @@ int main(int argc, char *argv[])
                 w.assignmentUpdate(rdAssignment);
                 //double sol = objectiveFunction(w);
                 //cout << "\nThe value of the rounded solution is : " << sol;
-                int oneOptSol = oneOptSearch(rdAssignment, w);
+                long oneOptSol = oneOptSearch(rdAssignment, w);
 
-                cout << oneOptSol << ' ' << ceil(lb) << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                cout << oneOptSol << ' ' << ceil(lb) << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
 
-                begin = chrono::high_resolution_clock::now();
-                int sol = multipleRounding(V, w, nbR, k);
-                end = chrono::high_resolution_clock::now();
-                cout << ' ' << sol << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                c_start = std::clock();
+                long sol = multipleRounding(V, w, nbR, k);
+                c_end = std::clock();
+                cout << ' ' << sol << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
         }
 
         else
@@ -1060,9 +1060,9 @@ int main(int argc, char *argv[])
                                 cout << "\nC_f cols" << C_f.cols();
                         }
 
-                        auto begin = chrono::high_resolution_clock::now();
+                        std::clock_t c_start = std::clock();
                         DnMat V = doBCDMixing(w, C_f, tol, maxiter, k);
-                        auto end = chrono::high_resolution_clock::now();
+                        std::clock_t c_end = std::clock();
                         //cout << "\nElapsed time : "<< chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/10e9 << "s";
 
                         if (debug)
@@ -1079,15 +1079,15 @@ int main(int argc, char *argv[])
                         //double sol = objectiveFunction(w);
                         //cout << "\nThe value of the rounded solution is : " << sol;
 
-                        int oneOptSol = oneOptSearch(rdAssignment, w);
+                        long oneOptSol = oneOptSearch(rdAssignment, w);
                         //cout << "\nThe value of the rounded solution after 1-opt search is : " << oneOptSol;
 
-                        cout << oneOptSol << ' ' << ceil(lb) << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                        cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
 
-                        begin = chrono::high_resolution_clock::now();
-                        int sol = multipleRounding(V, w, nbR, k);
-                        end = chrono::high_resolution_clock::now();
-                        cout << ' ' << sol << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                        c_start = std::clock();
+                        long sol = multipleRounding(V, w, nbR, k);
+                        c_end = std::clock();
+                        cout << ' ' << sol << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
                 }
                 else
                 {
