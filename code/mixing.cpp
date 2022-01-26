@@ -540,7 +540,7 @@ double currentDelta(const DnMat &G, const DnMat &V, const DnMat &Vb, int first,
         double currDelta = 0;
         for (int i = first; i != last; i++)
         {
-                currDelta += 2*(V.col(i) - Vb.col(i - first)).dot(G.col(i - first));
+                currDelta += 2 * (V.col(i) - Vb.col(i - first)).dot(G.col(i - first));
         }
 
         return currDelta;
@@ -662,7 +662,7 @@ DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
 
                 BCD_it++;
 
-                if (delta < tol*1e9)
+                if (delta < tol * 1e9)
                 {
                         break;
                 }
@@ -719,7 +719,7 @@ DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 
                 it++;
 
-                if (delta < tol*1e9)
+                if (delta < tol * 1e9)
                 {
                         break;
                 }
@@ -905,8 +905,7 @@ double deltaObjVar(wcsp &w, size_t var_index)
 
         for (size_t i = 0; i < pfun.size(); i++)
         {
-                double value = pfun[i]->getAssignment();
-                objectiveValue = objectiveValue + value;
+                objectiveValue += pfun[i]->getAssignment();
         }
 
         return objectiveValue;
@@ -930,6 +929,9 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                         size_t size_i = rdAssignment[i].size();
                         size_t value = pVar[i]->getValue();
                         double objBase = initial - deltaObjVar(w, i);
+                        cout << "var " << i << " val " << value << std::endl;
+                        cout << "Initial " << initial << std::endl;
+                        cout << "Recomputed " << objectiveFunction(w) << std::endl;
 
                         rdAssignment[i][value] = 0;
                         int indMin = 0;
@@ -942,8 +944,12 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                                         w.assignmentUpdate(rdAssignment);
                                         curr_val = objBase + deltaObjVar(w, i);
 
+                                        cout << "current " << curr_val << " for value " << j << std::endl;
+                                        cout << "recomputed " << objectiveFunction(w) << std::endl;
+
                                         if (curr_val < min)
                                         {
+                                                cout << "Better " << curr_val << std::endl;
                                                 min = curr_val;
                                                 indMin = j;
                                                 changed = true;
@@ -951,6 +957,7 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                                         rdAssignment[i][j] = 0;
                                 }
                         }
+                        initial = min;
                         rdAssignment[i][indMin] = 1;
                 }
         }
