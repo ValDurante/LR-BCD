@@ -1058,12 +1058,12 @@ int main(int argc, char *argv[])
                 //cout << "\nThe value of the rounded solution is : " << sol;
                 long oneOptSol = oneOptSearch(rdAssignment, w);
 
-                cout << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
+                cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
                 begin = cpuTime();
-                int sol = multipleRounding(V, w, nbR, k);
+                long sol = multipleRounding(V, w, nbR, k);
                 end = cpuTime();
-                cout << ' ' << sol << ' ' << (end - begin);
+                cout << std::fixed << ' ' << sol << ' ' << (end - begin);
         }
 
         else
@@ -1114,12 +1114,12 @@ int main(int argc, char *argv[])
                         long oneOptSol = oneOptSearch(rdAssignment, w);
                         //cout << "\nThe value of the rounded solution after 1-opt search is : " << oneOptSol;
 
-                        cout << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
+                        cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
                         begin = cpuTime();
-                        int sol = multipleRounding(V, w, nbR, k);
+                        long sol = multipleRounding(V, w, nbR, k);
                         end = cpuTime();
-                        cout << ' ' << sol << ' ' << (end - begin);
+                        cout << std::fixed << ' ' << sol << ' ' << (end - begin);
                 }
                 else
                 {
