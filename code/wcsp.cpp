@@ -102,12 +102,6 @@ void wcsp::assignmentUpdate(const vector<vector<int>> &assignment)
     {
         _variables[i]->setDomain(assignment[i]);
     }
-
-    for (size_t i = 0; i < nbVar; i++)
-    {
-        cout << i << " " << _variables[i]->getValue() << " ";
-    }
-    cout << std::endl;
 }
 
 void wcsp::resetWcsp()
