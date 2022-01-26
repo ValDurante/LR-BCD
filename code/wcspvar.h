@@ -1,11 +1,11 @@
 //wcspvar.h
-#include <vector>
-
 #ifndef WCSPVAR_H
 #define WCSPVAR_H
 
-using namespace std;
+#include <vector>
 
+using namespace std;
+class wcspfun;
 class wcspvar
 
 {
@@ -15,20 +15,23 @@ private:
     bool _assigned;
 
 public:
+    vector<wcspfun *> functions;
+
     wcspvar(size_t);
     wcspvar();
     ~wcspvar(void);
 
+    void addFunction(wcspfun *f) { functions.push_back(f); };
+
     void setValue(int);
     void setDomain(vector<int>);
     int getValue();
-    const vector<int>& getDomain();
+    const vector<int> &getDomain();
     bool isAssigned();
     void removeDomain();
     size_t domainSize();
     size_t relatDomainSize();
     void resetVariable();
-
 };
 
 #endif

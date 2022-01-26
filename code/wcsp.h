@@ -25,7 +25,7 @@ private:
     vector<wcspfun *> _functions;
 
 public:
-    wcsp(double, double, vector<wcspvar *>, vector<wcspfun *>);
+    wcsp(double, double, const vector<wcspvar *> &, const vector<wcspfun *> &);
     wcsp();
     ~wcsp(void);
     double getUpperBound();

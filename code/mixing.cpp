@@ -13,7 +13,8 @@
 #include <eigen3/Eigen/Dense>
 #include <cmath>
 #include <ctime>
-#include <chrono>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include "wcsp.h"
 #include "wcspreader.hh"
@@ -28,6 +29,13 @@ typedef Eigen::VectorXd DnVec;
 typedef Eigen::MatrixXd DnMat;
 
 const double MEPS = 1e-24;
+
+static inline double cpuTime(void)
+{
+        struct rusage ru;
+        getrusage(RUSAGE_SELF, &ru);
+        return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000;
+}
 
 // Initializes to 0 the memory block pointed by v
 void szero(double *v, int l);
@@ -889,39 +897,63 @@ double objectiveFunction(wcsp &w)
         return objectiveValue;
 }
 
+double deltaObjVar(wcsp &w, size_t var_index)
+{
+        wcspvar *varp = w.getVariables()[var_index];
+        const vector<wcspfun *> &pfun = varp->functions;
+        double objectiveValue = 0;
+
+        for (size_t i = 0; i < pfun.size(); i++)
+        {
+                double value = pfun[i]->getAssignment();
+                objectiveValue = objectiveValue + value;
+        }
+
+        return objectiveValue;
+}
+
 double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
 {
         w.assignmentUpdate(rdAssignment);
         const vector<wcspvar *> &pVar = w.getVariables();
-        double min = objectiveFunction(w);
+        double initial = objectiveFunction(w);
         size_t size = rdAssignment.size();
-        double curr_val = min;
+        double min = initial;
+        double curr_val;
+        bool changed = true;
 
-        for (size_t i = 0; i != size; i++)
+        while (changed)
         {
-                size_t size_i = rdAssignment[i].size();
-                double value = pVar[i]->getValue();
-                rdAssignment[i][value] = 0;
-                int indMin = 0;
-
-                for (size_t j = 0; j != size_i; j++)
+                changed = false;
+                for (size_t i = 0; i != size; i++)
                 {
-                        rdAssignment[i][j] = 1;
-                        w.assignmentUpdate(rdAssignment);
-                        curr_val = objectiveFunction(w);
+                        size_t size_i = rdAssignment[i].size();
+                        size_t value = pVar[i]->getValue();
+                        double objBase = initial - deltaObjVar(w, i);
 
-                        if (curr_val < min)
+                        rdAssignment[i][value] = 0;
+                        int indMin = 0;
+
+                        for (size_t j = 0; j != size_i; j++)
                         {
-                                min = curr_val;
-                                indMin = j;
+                                if (j != value)
+                                {
+                                        rdAssignment[i][j] = 1;
+                                        w.assignmentUpdate(rdAssignment);
+                                        curr_val = objBase + deltaObjVar(w, i);
+
+                                        if (curr_val < min)
+                                        {
+                                                min = curr_val;
+                                                indMin = j;
+                                                changed = true;
+                                        }
+                                        rdAssignment[i][j] = 0;
+                                }
                         }
-
-                        rdAssignment[i][j] = 0;
+                        rdAssignment[i][indMin] = 1;
                 }
-
-                rdAssignment[i][indMin] = 1;
         }
-
         return min + w.getLowerBound();
 }
 
@@ -998,9 +1030,9 @@ int main(int argc, char *argv[])
                         cout << "\nPenalty coefficient" << rho;
                 }
 
-                auto begin = chrono::high_resolution_clock::now();
+                auto begin = cpuTime();
                 DnMat V = doMixing(w, Q, tol, maxiter, k);
-                auto end = chrono::high_resolution_clock::now();
+                auto end = cpuTime();
 
                 double lb = evalFun(Q, V) + bias(w);
                 vector<vector<int>> rdAssignment = rounding(V, w, k);
@@ -1026,12 +1058,12 @@ int main(int argc, char *argv[])
                 //cout << "\nThe value of the rounded solution is : " << sol;
                 int oneOptSol = oneOptSearch(rdAssignment, w);
 
-                cout << oneOptSol << ' ' << ceil(lb) << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                cout << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
-                begin = chrono::high_resolution_clock::now();
+                begin = cpuTime();
                 int sol = multipleRounding(V, w, nbR, k);
-                end = chrono::high_resolution_clock::now();
-                cout << ' ' << sol << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                end = cpuTime();
+                cout << ' ' << sol << ' ' << (end - begin);
         }
 
         else
@@ -1060,10 +1092,10 @@ int main(int argc, char *argv[])
                                 cout << "\nC_f cols" << C_f.cols();
                         }
 
-                        auto begin = chrono::high_resolution_clock::now();
+                        auto begin = cpuTime();
                         DnMat V = doBCDMixing(w, C_f, tol, maxiter, k);
-                        auto end = chrono::high_resolution_clock::now();
-                        //cout << "\nElapsed time : "<< chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/10e9 << "s";
+                        auto end = cpuTime();
+                        //cout << "\nElapsed time : "<< (end-begin) << "s";
 
                         if (debug)
                         {
@@ -1082,12 +1114,12 @@ int main(int argc, char *argv[])
                         int oneOptSol = oneOptSearch(rdAssignment, w);
                         //cout << "\nThe value of the rounded solution after 1-opt search is : " << oneOptSol;
 
-                        cout << oneOptSol << ' ' << ceil(lb) << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                        cout << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
-                        begin = chrono::high_resolution_clock::now();
+                        begin = cpuTime();
                         int sol = multipleRounding(V, w, nbR, k);
-                        end = chrono::high_resolution_clock::now();
-                        cout << ' ' << sol << ' ' << chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() / 10e9;
+                        end = cpuTime();
+                        cout << ' ' << sol << ' ' << (end - begin);
                 }
                 else
                 {
