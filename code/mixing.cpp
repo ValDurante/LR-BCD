@@ -1030,15 +1030,9 @@ int main(int argc, char *argv[])
                         cout << "\nPenalty coefficient" << rho;
                 }
 
-<<<<<<< HEAD
-                std::clock_t c_start = std::clock();
-                DnMat V = doMixing(w, Q, tol, maxiter, k);
-                std::clock_t c_end = std::clock();
-=======
                 auto begin = cpuTime();
                 DnMat V = doMixing(w, Q, tol, maxiter, k);
                 auto end = cpuTime();
->>>>>>> a1595c7dadc72591a467a8675e62d2b8f0969527
 
                 double lb = evalFun(Q, V) + bias(w);
                 vector<vector<int>> rdAssignment = rounding(V, w, k);
@@ -1064,21 +1058,12 @@ int main(int argc, char *argv[])
                 //cout << "\nThe value of the rounded solution is : " << sol;
                 long oneOptSol = oneOptSearch(rdAssignment, w);
 
-<<<<<<< HEAD
-                cout << oneOptSol << ' ' << ceil(lb) << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
-
-                c_start = std::clock();
-                long sol = multipleRounding(V, w, nbR, k);
-                c_end = std::clock();
-                cout << ' ' << sol << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
-=======
                 cout << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
                 begin = cpuTime();
                 int sol = multipleRounding(V, w, nbR, k);
                 end = cpuTime();
                 cout << ' ' << sol << ' ' << (end - begin);
->>>>>>> a1595c7dadc72591a467a8675e62d2b8f0969527
         }
 
         else
@@ -1107,17 +1092,10 @@ int main(int argc, char *argv[])
                                 cout << "\nC_f cols" << C_f.cols();
                         }
 
-<<<<<<< HEAD
-                        std::clock_t c_start = std::clock();
-                        DnMat V = doBCDMixing(w, C_f, tol, maxiter, k);
-                        std::clock_t c_end = std::clock();
-                        //cout << "\nElapsed time : "<< chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/10e9 << "s";
-=======
                         auto begin = cpuTime();
                         DnMat V = doBCDMixing(w, C_f, tol, maxiter, k);
                         auto end = cpuTime();
                         //cout << "\nElapsed time : "<< (end-begin) << "s";
->>>>>>> a1595c7dadc72591a467a8675e62d2b8f0969527
 
                         if (debug)
                         {
@@ -1136,21 +1114,12 @@ int main(int argc, char *argv[])
                         long oneOptSol = oneOptSearch(rdAssignment, w);
                         //cout << "\nThe value of the rounded solution after 1-opt search is : " << oneOptSol;
 
-<<<<<<< HEAD
-                        cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
-
-                        c_start = std::clock();
-                        long sol = multipleRounding(V, w, nbR, k);
-                        c_end = std::clock();
-                        cout << ' ' << sol << ' ' << "CPU time used: " << 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC << " ms\n";
-=======
                         cout << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
                         begin = cpuTime();
                         int sol = multipleRounding(V, w, nbR, k);
                         end = cpuTime();
                         cout << ' ' << sol << ' ' << (end - begin);
->>>>>>> a1595c7dadc72591a467a8675e62d2b8f0969527
                 }
                 else
                 {
