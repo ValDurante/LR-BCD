@@ -6,7 +6,7 @@
 
 using namespace std;
 
-wcspfun::wcspfun(vector<wcspvar*> scope,vector<double> costs, vector<int> indices)
+wcspfun::wcspfun(const vector<wcspvar *> &scope, const vector<double> &costs, const vector<int> &indices)
 {
     _scope = scope;
     _costs = costs;
@@ -15,27 +15,26 @@ wcspfun::wcspfun(vector<wcspvar*> scope,vector<double> costs, vector<int> indice
 
 wcspfun::wcspfun()
 {
-    _scope = vector<wcspvar*>();
+    _scope = vector<wcspvar *>();
     _costs = vector<double>();
     _indices = vector<int>();
 }
 
 wcspfun::~wcspfun()
 {
-
 }
 
-const vector<wcspvar*>& wcspfun::getScope()
+const vector<wcspvar *> &wcspfun::getScope()
 {
     return _scope;
 }
 
-const vector<double>& wcspfun::getCosts()
+const vector<double> &wcspfun::getCosts()
 {
     return _costs;
 }
 
-const vector<int>& wcspfun::getIndices()
+const vector<int> &wcspfun::getIndices()
 {
     return _indices;
 }
@@ -48,27 +47,27 @@ double wcspfun::getUnaryValue(int i)
 double wcspfun::getBinaryValue(int i, int j)
 {
     size_t domY = _scope[1]->domainSize();
-    return _costs[i*domY + j];
+    return _costs[i * domY + j];
 }
 
 double wcspfun::getMin()
-{ 
+{
     vector<int> validValues = this->validValues();
     size_t size = validValues.size();
     double min = _costs[validValues[0]];
-    
-    if(size > 1)
+
+    if (size > 1)
     {
-        for(size_t i = 1; i != validValues.size(); i ++)
-        {   
+        for (size_t i = 1; i != validValues.size(); i++)
+        {
             double currentValue = _costs[validValues[i]];
-            if(currentValue < min)
+            if (currentValue < min)
             {
                 min = currentValue;
             }
         }
     }
-    
+
     return min;
 }
 
@@ -78,24 +77,24 @@ double wcspfun::getMax()
     size_t size = validValues.size();
     double max = _costs[validValues[0]];
 
-    if(size > 1)
+    if (size > 1)
     {
-        for(size_t i = 1; i != validValues.size(); i ++)
-        {   
+        for (size_t i = 1; i != validValues.size(); i++)
+        {
             double currentValue = _costs[validValues[i]];
-            if(currentValue > max)
+            if (currentValue > max)
             {
                 max = currentValue;
             }
         }
     }
-    
+
     return max;
 }
 
 double wcspfun::getMaxInit()
 {
-    double max = *max_element(_costs.begin(),_costs.end());
+    double max = *max_element(_costs.begin(), _costs.end());
 
     return max;
 }
@@ -103,19 +102,19 @@ double wcspfun::getMaxInit()
 double wcspfun::getAssignment()
 {
     double value;
-    if (_scope.size()==2)
+    if (_scope.size() == 2)
     {
         size_t domY = _scope[1]->domainSize();
         int i = _scope[0]->getValue();
         int j = _scope[1]->getValue();
-        value = _costs[i*domY + j]; 
+        value = _costs[i * domY + j];
     }
     else
     {
         int i = _scope[0]->getValue();
         value = _costs[i];
     }
-    
+
     return value;
 }
 
@@ -126,12 +125,12 @@ not removed from the variable domain.
 vector<int> wcspfun::validValues()
 {
     vector<int> validValues;
-    if (_scope.size()==2)
+    if (_scope.size() == 2)
     {
         bool assignedX = _scope[0]->isAssigned();
         bool assignedY = _scope[1]->isAssigned();
-        const vector<int>& pDomX = _scope[0]->getDomain();
-        const vector<int>& pDomY = _scope[1]->getDomain();
+        const vector<int> &pDomX = _scope[0]->getDomain();
+        const vector<int> &pDomY = _scope[1]->getDomain();
         size_t domX = _scope[0]->domainSize();
         size_t domY = _scope[1]->domainSize();
 
@@ -139,17 +138,17 @@ vector<int> wcspfun::validValues()
         {
             int i = _scope[0]->getValue();
             int j = _scope[1]->getValue();
-            validValues.push_back(i*domY + j); 
+            validValues.push_back(i * domY + j);
         }
 
         else if (assignedX && !assignedY)
         {
             int i = _scope[0]->getValue();
-            for(size_t j = 0; j!=domY; j++)
+            for (size_t j = 0; j != domY; j++)
             {
-                if(pDomY[j] != -1)
+                if (pDomY[j] != -1)
                 {
-                    validValues.push_back(i*domY + j);
+                    validValues.push_back(i * domY + j);
                 }
             }
         }
@@ -157,46 +156,45 @@ vector<int> wcspfun::validValues()
         else if (!assignedX && assignedY)
         {
             int j = _scope[1]->getValue();
-            for(size_t i = 0; i!= domX; i++)
+            for (size_t i = 0; i != domX; i++)
             {
-                if(pDomX[i] != -1)
+                if (pDomX[i] != -1)
                 {
-                    validValues.push_back(i*domY + j);
+                    validValues.push_back(i * domY + j);
                 }
             }
         }
 
         else
         {
-            for(size_t i = 0; i != domX; i++)
+            for (size_t i = 0; i != domX; i++)
             {
-                for (size_t j = 0; j!=domY; j++)
+                for (size_t j = 0; j != domY; j++)
                 {
                     if (pDomX[i] != -1 && pDomY[j] != -1)
                     {
-                        validValues.push_back(i*domY + j);
+                        validValues.push_back(i * domY + j);
                     }
                 }
             }
         }
-
     }
-    else 
+    else
     {
         bool assignedX = _scope[0]->isAssigned();
-        const vector<int>& pDomX = _scope[0]->getDomain();
+        const vector<int> &pDomX = _scope[0]->getDomain();
         size_t domX = _scope[0]->domainSize();
 
-        if(assignedX)
-        {   
+        if (assignedX)
+        {
             int i = _scope[0]->getValue();
             validValues.push_back(i);
         }
         else
         {
-            for(size_t i = 0; i != domX; i++)
+            for (size_t i = 0; i != domX; i++)
             {
-                if(pDomX[i] != -1)
+                if (pDomX[i] != -1)
                 {
                     validValues.push_back(i);
                 }

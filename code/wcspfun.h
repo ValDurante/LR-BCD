@@ -11,26 +11,25 @@ class wcspfun
 
 {
 private:
-    vector<wcspvar*> _scope;
+    vector<wcspvar *> _scope;
     vector<double> _costs;
     vector<int> _indices;
 
 public:
-    wcspfun(vector<wcspvar*>,vector<double>,vector<int>);
+    wcspfun(const vector<wcspvar *> &, const vector<double> &, const vector<int> &);
     wcspfun();
     ~wcspfun(void);
 
-    const vector<wcspvar*>& getScope();
-    const vector<double>& getCosts();
-    const vector<int>& getIndices();
+    const vector<wcspvar *> &getScope();
+    const vector<double> &getCosts();
+    const vector<int> &getIndices();
     double getUnaryValue(int);
-    double getBinaryValue(int,int);
+    double getBinaryValue(int, int);
     double getMin();
     double getMax();
     double getMaxInit();
     double getAssignment();
     vector<int> validValues();
-
 };
 
 #endif

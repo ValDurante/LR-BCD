@@ -14,12 +14,26 @@ typedef Eigen::SparseVector<double> SpVec;
 typedef Eigen::VectorXd DnVec;
 typedef Eigen::MatrixXd DnMat;
 
-wcsp::wcsp(double ub, double lb, vector<wcspvar *> variables, vector<wcspfun *> functions)
+wcsp::wcsp(double ub, double lb, const vector<wcspvar *> &variables, const vector<wcspfun *> &functions)
 {
     _ub = ub;
     _lb = lb;
     _variables = variables;
     _functions = functions;
+
+    size_t fun_size = _functions.size();
+    for (size_t i = 0; i < fun_size; i++)
+    {
+        if (_functions[i]->getIndices().size() == 2)
+        {
+            _variables[_functions[i]->getIndices()[0]]->addFunction(_functions[i]);
+            _variables[_functions[i]->getIndices()[1]]->addFunction(_functions[i]);
+        }
+        else
+        {
+            _variables[_functions[i]->getIndices()[0]]->addFunction(_functions[i]);
+        }
+    }
 }
 
 wcsp::wcsp()
