@@ -156,13 +156,14 @@ vector<int> wcsp::relatDomains()
 Build the SDP cost matrix
 */
 
-SpVec wcsp::unaryCostVector()
+DnVec wcsp::unaryCostVector()
 {
     size_t d = this->getSDPSize();
     vector<int> domains = this->domains();
 
-    SpVec U(d);
-    U.reserve(d);
+    DnVec U(d);
+
+    //U.reserve(d);
 
     for (size_t i = 0; i != _functions.size(); i++)
     {
@@ -178,7 +179,8 @@ SpVec wcsp::unaryCostVector()
             {
                 if (costs[j] != 0)
                 {
-                    U.insert(ind + j) = costs[j];
+                    //U.insert(ind + j) = costs[j];
+                    U(ind + j) = costs[j];
                 }
             }
         }
@@ -187,16 +189,19 @@ SpVec wcsp::unaryCostVector()
     return U;
 }
 
-SpMat wcsp::binaryCostMatrix()
+DnMat wcsp::binaryCostMatrix()
 {
     size_t d = this->getSDPSize();
     vector<int> domains = this->domains();
 
-    SpMat C(d, d);
+    DnMat C(d, d);
+
+    /*
     size_t domSize = _variables[0]->domainSize();
     size_t nbFun = _functions.size();
     int estimation_of_entries = round(domSize * domSize * nbFun);
     C.reserve(estimation_of_entries);
+    */
 
     for (size_t i = 0; i != _functions.size(); i++)
     {
@@ -217,7 +222,8 @@ SpMat wcsp::binaryCostMatrix()
                 {
                     int q = j / domY;
                     int r = j % domY;
-                    C.insert(indX + q, indY + r) = costs[j];
+                    //C.insert(indX + q, indY + r) = costs[j];
+                    C(indX + q, indY + r) = costs[j];
                 }
             }
         }
@@ -234,24 +240,27 @@ C -> (1/4)*C
 U -> (U + C*e)/2
 */
 
-SpMat wcsp::SDPmat()
+DnMat wcsp::SDPmat()
 {
-    SpVec U = this->unaryCostVector();
-    SpMat C = this->binaryCostMatrix();
+    DnVec U = this->unaryCostVector();
+    DnMat C = this->binaryCostMatrix();
     size_t d = this->getSDPSize();
-    SpMat Q(d + 1, d + 1);
+    DnMat Q(d + 1, d + 1);
 
+    /*
     size_t domSize = _variables[0]->domainSize();
     size_t nbFun = _functions.size();
     int estimation_of_entries = round(domSize * domSize * nbFun);
     Q.reserve(estimation_of_entries);
+    */
 
-    C = 0.5 * (SpMat(C.transpose()) + C);
-    SpMat C_m = 0.25 * C;
+    C = 0.5 * (DnMat(C.transpose()) + C);
+    DnMat C_m = 0.25 * C;
     DnVec e = DnVec::Ones(d);
     DnVec U_m = 0.5 * (U + C * e);
     U_m = 0.5 * U_m;
 
+    /*
     for (int k = 0; k < C_m.outerSize(); ++k)
     {
         for (SpMat::InnerIterator it(C_m, k); it; ++it)
@@ -268,6 +277,11 @@ SpMat wcsp::SDPmat()
             Q.insert(d, i) = U_m(i);
         }
     }
+    */
+
+    Q.block(0, 0, d, d) = C_m;
+    Q.block(0, d, d, 1) = U_m;
+    Q.block(d, 0, 1, d) = U_m.transpose();
 
     return Q;
 }
@@ -332,8 +346,8 @@ DnMat wcsp::dualMat()
 
     DnVec b = this->rhs();
     SpMat A = this->constMat();
-    SpVec U = this->unaryCostVector();
-    SpMat C = this->binaryCostMatrix();
+    DnVec U = this->unaryCostVector();
+    DnMat C = this->binaryCostMatrix();
     DnMat Q(d + 1, d + 1);
 
     DnVec e = DnVec::Ones(d);
@@ -342,8 +356,8 @@ DnMat wcsp::dualMat()
     b = b - temp;
     A = 0.5 * A;
 
-    C = 0.5 * (SpMat(C.transpose()) + C);
-    SpMat C_m = 0.25 * C;
+    C = 0.5 * (DnMat(C.transpose()) + C);
+    DnMat C_m = 0.25 * C;
     DnVec U_m = 0.5 * (U + C * e);
     //U_m = 0.5*U_m;
 

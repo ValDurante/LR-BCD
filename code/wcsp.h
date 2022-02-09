@@ -39,9 +39,9 @@ public:
     void resetWcsp();
     vector<int> domains();
     vector<int> relatDomains();
-    SpVec unaryCostVector();
-    SpMat binaryCostMatrix();
-    SpMat SDPmat();
+    DnVec unaryCostVector();
+    DnMat binaryCostMatrix();
+    DnMat SDPmat();
     SpMat constMat();
     DnVec rhs();
     DnMat gOperator();
