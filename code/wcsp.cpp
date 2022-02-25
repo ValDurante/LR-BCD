@@ -86,9 +86,16 @@ size_t wcsp::getSDPSize()
     return d;
 }
 
-size_t wcsp::getRank()
+size_t wcsp::getRank(int m)
 {
     size_t n = this->getSDPSize() + 1;
+
+    // add the N exactly one constraints for the BCD method
+    if (m == 2)
+    {
+        n = n + _variables.size();
+    }
+
     size_t k = ceil(sqrt(2 * n));
 
     return k;
@@ -375,6 +382,19 @@ DnMat wcsp::dualMat()
     return Q;
 }
 
+// Build the symmetric matrix for the exactly one constraint
+DnMat wcsp::exactlyOne()
+{
+    int d = this->getSDPSize();
+    DnMat F(d + 1, d + 1);
+    DnVec e = DnVec::Ones(d);
+
+    F.block(0, d, d, 1) = e;
+    F.block(d, 0, 1, d) = e.transpose();
+
+    return F;
+}
+
 //Return the penalty coeff for constraint dualization
 double wcsp::penaltyCoeff()
 {
@@ -418,4 +438,40 @@ vector<int> wcsp::validRows()
     }
 
     return vRows;
+}
+
+void wcsp::writeSol()
+{
+    const vector<wcspvar *> &pVar = this->getVariables();
+    string filename("BCD_sol.txt");
+    fstream file_out;
+
+    file_out.open(filename, std::ios_base::out);
+    if (!file_out.is_open()) 
+    {
+        cout << "failed to open " << filename << '\n';
+    } 
+    else 
+    {
+        for (size_t i = 0; i != pVar.size(); i++)
+        {
+            int value = pVar[i]->getValue();
+            int domSize = pVar[i]->domainSize();
+            for (int j = 0; j != domSize; j++ )
+            {
+                if (j == value)
+                {
+                    file_out << 1 << " ";
+                }
+                else
+                {
+                    file_out << 0 << " ";
+                }
+                
+            }
+            
+        }
+
+        file_out << endl;
+    }
 }

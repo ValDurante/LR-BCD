@@ -1,6 +1,8 @@
 //wcsp.h
 #include <vector>
 #include <memory>
+#include <iostream>
+#include <fstream>
 #include <eigen3/Eigen/Sparse>
 #include "wcspfun.h"
 #include "wcspvar.h"
@@ -34,7 +36,7 @@ public:
     const vector<wcspvar *> &getVariables();
     const vector<wcspfun *> &getFunctions();
     size_t getSDPSize();
-    size_t getRank();
+    size_t getRank(int m);
     void assignmentUpdate(const vector<vector<int>> &assignment);
     void resetWcsp();
     vector<int> domains();
@@ -46,8 +48,10 @@ public:
     DnVec rhs();
     DnMat gOperator();
     DnMat dualMat();
+    DnMat exactlyOne();
     double penaltyCoeff();
     vector<int> validRows();
+    void writeSol();
 };
 
 #endif

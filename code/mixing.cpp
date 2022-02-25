@@ -662,7 +662,7 @@ DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
 
                 BCD_it++;
 
-                if (delta < tol * 1e9)
+                if (delta < tol)       //* 1e9)
                 {
                         break;
                 }
@@ -682,7 +682,7 @@ DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
         return V;
 }
 
-DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
+DnMat doMixing(wcsp &wcsp, const DnMat &Q, const DnMat& C, double tol, int maxiter, int k)
 {
         //int k = wcsp.getRank();
         int d = wcsp.getSDPSize();
@@ -719,7 +719,7 @@ DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 
                 it++;
 
-                if (delta < tol * 1e9)
+                if (delta < tol)           //* 1e9)
                 {
                         break;
                 }
@@ -741,9 +741,9 @@ DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
         return V;
 }
 
-DnMat doMixing_2(wcsp &wcsp, const DnMat &Q, double tol, int maxiter)
+DnMat doMixing_2(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 {
-        int k = wcsp.getRank();
+        //int k = wcsp.getRank();
         int d = wcsp.getSDPSize();
         DnMat V = mixingInit(wcsp, k);
         DnVec g = DnVec::Zero(k);
@@ -980,12 +980,13 @@ int main(int argc, char *argv[])
         //use current time as seed for random generator
         srand(time(0));
 
-        if (argc != 5)
+        if (argc != 6)
         {
                 cout << "usage: " << argv[0] << " <wcsp-input>  "
                      << " 1 - Dualization method, 2 - BCD method "
                      << " rank : -1 -> sqrt(2n), k "
-                     << "nb of roundings\n";
+                     << " nb of roundings "
+                     << " -f return integer solution in txt file\n";
                 return 1;
         }
 
@@ -997,15 +998,15 @@ int main(int argc, char *argv[])
                 return 1;
         }
 
-        double tol = 10e-3;
-        int maxiter = 100000;
+        double tol = 10e-3 * 1e9;
+        int maxiter = 100000;  //100000;
 
         //read the wcsp
         wcsp w = readwcsp(ifs);
         int k = stoi(argv[3]);
         if (k == -1)
         {
-                k = w.getRank();
+                k = w.getRank(stoi(argv[2]));
         }
 
         int nbR = stoi(argv[4]);
@@ -1024,6 +1025,7 @@ int main(int argc, char *argv[])
 
                 //compute the Rho lower bound
                 DnMat Q = w.dualMat();
+                DnMat C = w.SDPmat();
 
                 if (debug)
                 {
@@ -1032,7 +1034,7 @@ int main(int argc, char *argv[])
                 }
 
                 auto begin = cpuTime();
-                DnMat V = doMixing(w, Q, tol, maxiter, k);
+                DnMat V = doMixing(w, Q, C, tol, maxiter, k);
                 auto end = cpuTime();
 
                 double lb = evalFun(Q, V) + bias(w);
@@ -1055,16 +1057,18 @@ int main(int argc, char *argv[])
                 }
 
                 w.assignmentUpdate(rdAssignment);
-                //double sol = objectiveFunction(w);
-                //cout << "\nThe value of the rounded solution is : " << sol;
                 long oneOptSol = oneOptSearch(rdAssignment, w);
-
                 cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
                 begin = cpuTime();
                 long sol = multipleRounding(V, w, nbR, k);
                 end = cpuTime();
                 cout << std::fixed << ' ' << sol << ' ' << (end - begin);
+
+                if (strcmp(argv[5], "-f") == 0)
+                {
+                        w.writeSol();
+                }
         }
 
         else
@@ -1096,8 +1100,7 @@ int main(int argc, char *argv[])
                         auto begin = cpuTime();
                         DnMat V = doBCDMixing(w, C_f, tol, maxiter, k);
                         auto end = cpuTime();
-                        //cout << "\nElapsed time : "<< (end-begin) << "s";
-
+                         
                         if (debug)
                         {
                                 DnMat M = w.gOperator();
@@ -1107,20 +1110,20 @@ int main(int argc, char *argv[])
 
                         double lb = evalFun(C_f, V) + bias(w);
                         vector<vector<int>> rdAssignment = rounding(V, w, k);
-
                         w.assignmentUpdate(rdAssignment);
-                        //double sol = objectiveFunction(w);
-                        //cout << "\nThe value of the rounded solution is : " << sol;
-
+             
                         long oneOptSol = oneOptSearch(rdAssignment, w);
-                        //cout << "\nThe value of the rounded solution after 1-opt search is : " << oneOptSol;
-
                         cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
 
                         begin = cpuTime();
                         long sol = multipleRounding(V, w, nbR, k);
                         end = cpuTime();
                         cout << std::fixed << ' ' << sol << ' ' << (end - begin);
+
+                        if (strcmp(argv[5], "-f") == 0)
+                        {
+                                w.writeSol();
+                        }
                 }
                 else
                 {
