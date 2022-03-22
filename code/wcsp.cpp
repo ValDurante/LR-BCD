@@ -439,39 +439,3 @@ vector<int> wcsp::validRows()
 
     return vRows;
 }
-
-void wcsp::writeSol()
-{
-    const vector<wcspvar *> &pVar = this->getVariables();
-    string filename("BCD_sol.txt");
-    fstream file_out;
-
-    file_out.open(filename, std::ios_base::out);
-    if (!file_out.is_open()) 
-    {
-        cout << "failed to open " << filename << '\n';
-    } 
-    else 
-    {
-        for (size_t i = 0; i != pVar.size(); i++)
-        {
-            int value = pVar[i]->getValue();
-            int domSize = pVar[i]->domainSize();
-            for (int j = 0; j != domSize; j++ )
-            {
-                if (j == value)
-                {
-                    file_out << 1 << " ";
-                }
-                else
-                {
-                    file_out << 0 << " ";
-                }
-                
-            }
-            
-        }
-
-        file_out << endl;
-    }
-}

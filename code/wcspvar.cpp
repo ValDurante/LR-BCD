@@ -33,7 +33,8 @@ wcspvar::~wcspvar(void)
 void wcspvar::setValue(int value)
 {
     _value = value;
-    _assigned = true;
+    //Change it for the B&B solver
+    _assigned = false;
     _domain[value] = 1;
 }
 

@@ -51,7 +51,6 @@ public:
     DnMat exactlyOne();
     double penaltyCoeff();
     vector<int> validRows();
-    void writeSol();
 };
 
 #endif

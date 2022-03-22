@@ -330,14 +330,15 @@ vector<vector<int>> assignmentInit(wcsp &w)
         return assignment;
 }
 
-vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k)
+vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k, int i)
 {
         //int k = wcsp.getRank();
-        vector<int> domains = wcsp.relatDomains();
+        //vector<int> domains = wcsp.relatDomains();
+        vector<int> domains = wcsp.domains();
         const vector<wcspvar *> &pVar = wcsp.getVariables();
 
         default_random_engine generator;
-        generator.seed(time(0));
+        generator.seed(i + 1);
         normal_distribution<double> distribution(0, 1);
 
         DnVec r(k);
@@ -347,6 +348,7 @@ vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k)
         {
                 r(i) = distribution(generator);
         }
+
         r = r / r.norm();
 
         int var = 0; //if a var is already assigned we need to shift the remaining indices in domains
@@ -682,7 +684,7 @@ DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
         return V;
 }
 
-DnMat doMixing(wcsp &wcsp, const DnMat &Q, const DnMat& C, double tol, int maxiter, int k)
+DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 {
         //int k = wcsp.getRank();
         int d = wcsp.getSDPSize();
@@ -958,21 +960,112 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
         return min + w.getLowerBound();
 }
 
-double multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
+tuple<double,vector<vector<vector<int>>>> multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
 {
         vector<double> pSol;
         vector<vector<int>> rdAssignment_opti;
+        vector<vector<vector<int>>> aSol;
         double sol;
         for (int i = 0; i != nbRound; i++)
         {
-                rdAssignment_opti = rounding(V, wcsp, k);
+                rdAssignment_opti = rounding(V, wcsp, k, i);
                 sol = oneOptSearch(rdAssignment_opti, wcsp);
                 pSol.push_back(sol);
+                aSol.push_back(rdAssignment_opti);
         }
 
         double min = *min_element(pSol.begin(), pSol.end());
 
-        return min;
+        return make_tuple(min, aSol);
+}
+
+vector<DnMat> positivityConst(wcsp &w)
+{
+        int d = w.getSDPSize();
+        vector<DnMat> constMat;
+        const vector<wcspvar *> &pVar = w.getVariables();
+        int acc = pVar[0]->domainSize();
+
+        for(size_t i = 0; i != pVar.size() - 1; i++)
+        {
+                for(int j = 0; j != acc; j++)
+                {
+                        for(size_t l = acc; l != acc + pVar[i+1]->domainSize(); l++)
+                        {
+                                DnMat Q = DnMat::Zero(d + 1, d + 1);
+                                Q(l,j) = 0.5;
+                                Q(j,l) = 0.5;
+                                Q(l,d) = 0.5;
+                                Q(j,d) = 0.5;
+                                Q(d,l) = 0.5;
+                                Q(d,j) = 0.5;
+                                constMat.push_back(Q);
+
+                        }
+                }
+                acc = acc + pVar[i+1]->domainSize();
+        }
+
+        return constMat;
+}
+
+vector<DnMat> gangsterConst(wcsp &w)
+{
+        int d = w.getSDPSize();
+        vector<DnMat> constMat;
+        const vector<wcspvar *> &pVar = w.getVariables();
+        int acc = 0;
+
+        for(size_t i = 0; i != pVar.size(); i++)
+        {
+                for(size_t j = acc; j != acc +  pVar[i]->domainSize(); j++)
+                {
+                        for(size_t l = acc; l != j; l++)
+                        {
+                                DnMat Q = DnMat::Zero(d + 1, d + 1);
+                                Q(l,j) = 0.5;
+                                Q(j,l) = 0.5;
+                                Q(l,d) = 0.5;
+                                Q(j,d) = 0.5;
+                                Q(d,l) = 0.5;
+                                Q(d,j) = 0.5;
+                                constMat.push_back(Q);
+
+                        }
+                }
+                acc = acc + pVar[i]->domainSize();
+        }
+
+        return constMat;
+}
+
+void writeSol(string f_o, vector<vector<vector<int>>>& aSol)
+{
+        vector<vector<int>> currentSol;
+        string filename(f_o);
+        fstream file_out;
+        file_out.open(f_o, std::ios_base::out);
+
+        if (!file_out.is_open()) 
+        {
+                cout << "failed to open " << filename << '\n';
+        }
+        else 
+        {
+                for (size_t i = 0; i != aSol.size(); i++)
+                {
+                        currentSol = aSol[i];
+
+                        for (size_t j = 0; j != currentSol.size(); j++)
+                        {
+                                for (size_t k = 0; k != currentSol[j].size(); k++)
+                                {
+                                        file_out << currentSol[j][k] << " ";
+                                }
+                        }
+                        file_out << endl;
+                }
+        }
 }
 
 int main(int argc, char *argv[])
@@ -980,16 +1073,19 @@ int main(int argc, char *argv[])
         //use current time as seed for random generator
         srand(time(0));
 
-        if (argc != 6)
+        //usage
+        if (argc != 7)
         {
                 cout << "usage: " << argv[0] << " <wcsp-input>  "
                      << " 1 - Dualization method, 2 - BCD method "
-                     << " rank : -1 -> sqrt(2n), k "
-                     << " nb of roundings "
-                     << " -f return integer solution in txt file\n";
+                     << " -it=-1, i : maximum number of iterations "
+                     << " -k=-1, -2, -4, r : chosen value for the method rank "
+                     << " -nbR=m : number of output integer solutions "
+                     << " -f=sol.txt : return integer solution in txt file\n";
                 return 1;
         }
 
+        //read wcsp
         ifstream ifs(argv[1]);
 
         if (!ifs)
@@ -998,18 +1094,48 @@ int main(int argc, char *argv[])
                 return 1;
         }
 
-        double tol = 10e-3 * 1e9;
-        int maxiter = 100000;  //100000;
-
-        //read the wcsp
         wcsp w = readwcsp(ifs);
-        int k = stoi(argv[3]);
-        if (k == -1)
+
+        //set number of iterations
+        string sit = argv[3];
+        string subit = sit.substr(4, sit.size() - 4);
+        int maxiter = stoi(subit);
+
+        //default setting for maxiter
+        if(maxiter == -1)
         {
-                k = w.getRank(stoi(argv[2]));
+                maxiter = 100000;
         }
 
-        int nbR = stoi(argv[4]);
+        //set tolerance for the stopping criterion
+        double tol = 10e-3; //* 1e9;
+
+        //set rank
+        string srank = argv[4];
+        string subrank = srank.substr(3, srank.size() - 3);
+        int k = stoi(subrank);
+
+        switch ( k )
+        {
+        case -1:
+                k = w.getRank(stoi(argv[2]));
+                break;
+        case -2:
+                k = w.getRank(stoi(argv[2]))/2;
+                break;
+        case -4:
+                k = w.getRank(stoi(argv[2]))/4;
+                break;
+        }
+      
+        //set number of solutions to output
+        string ssol = argv[5];
+        string subsol = ssol.substr(5, ssol.size() - 5); 
+        int nbR = stoi(subsol);
+
+        //set filename for output solutions 
+        string file = argv[6];
+        string fo = file.substr(3, file.size() - 3);
 
         if (stoi(argv[2]) == 1)
         {
@@ -1025,7 +1151,6 @@ int main(int argc, char *argv[])
 
                 //compute the Rho lower bound
                 DnMat Q = w.dualMat();
-                DnMat C = w.SDPmat();
 
                 if (debug)
                 {
@@ -1034,11 +1159,10 @@ int main(int argc, char *argv[])
                 }
 
                 auto begin = cpuTime();
-                DnMat V = doMixing(w, Q, C, tol, maxiter, k);
+                DnMat V = doMixing(w, Q, tol, maxiter, k);
                 auto end = cpuTime();
 
                 double lb = evalFun(Q, V) + bias(w);
-                vector<vector<int>> rdAssignment = rounding(V, w, k);
 
                 if (debug)
                 {
@@ -1056,19 +1180,16 @@ int main(int argc, char *argv[])
                         cout << "\nGangster constraint value : " << gVal << "\n";
                 }
 
-                w.assignmentUpdate(rdAssignment);
-                long oneOptSol = oneOptSearch(rdAssignment, w);
-                cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
+                //w.assignmentUpdate(rdAssignment);
+                //long oneOptSol = oneOptSearch(rdAssignment, w);
+                cout << ceil(lb) << ' ' << (end - begin);
 
                 begin = cpuTime();
-                long sol = multipleRounding(V, w, nbR, k);
+                auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
                 end = cpuTime();
-                cout << std::fixed << ' ' << sol << ' ' << (end - begin);
+                cout << std::fixed << ' ' << long(pSol) << ' ' << (end - begin);
 
-                if (strcmp(argv[5], "-f") == 0)
-                {
-                        w.writeSol();
-                }
+                writeSol(fo, aSol);
         }
 
         else
@@ -1108,22 +1229,18 @@ int main(int argc, char *argv[])
                                 cout << "\nGangster constraint value : " << gVal << "\n";
                         }
 
+                        //cout << bias(w) << "\n";
+
                         double lb = evalFun(C_f, V) + bias(w);
-                        vector<vector<int>> rdAssignment = rounding(V, w, k);
-                        w.assignmentUpdate(rdAssignment);
-             
-                        long oneOptSol = oneOptSearch(rdAssignment, w);
-                        cout << std::fixed << oneOptSol << ' ' << ceil(lb) << ' ' << (end - begin);
+
+                        cout << ceil(lb) << ' ' << (end - begin);
 
                         begin = cpuTime();
-                        long sol = multipleRounding(V, w, nbR, k);
+                        auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
                         end = cpuTime();
-                        cout << std::fixed << ' ' << sol << ' ' << (end - begin);
+                        cout << std::fixed << ' ' << long(pSol) << ' ' << (end - begin);
 
-                        if (strcmp(argv[5], "-f") == 0)
-                        {
-                                w.writeSol();
-                        }
+                        writeSol(fo, aSol);
                 }
                 else
                 {
