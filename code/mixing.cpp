@@ -967,7 +967,7 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
         return min + w.getLowerBound();
 }
 
-tuple<double,vector<vector<vector<int>>>> multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
+tuple<vector<double>,vector<vector<vector<int>>>> multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
 {
         vector<double> pSol;
         vector<vector<int>> rdAssignment_opti;
@@ -982,9 +982,7 @@ tuple<double,vector<vector<vector<int>>>> multipleRounding(const DnMat &V, wcsp 
                 aSol.push_back(rdAssignment_opti);
         }
 
-        double min = *min_element(pSol.begin(), pSol.end());
-
-        return make_tuple(min, aSol);
+        return make_tuple(pSol, aSol);
 }
 
 vector<DnMat> positivityConst(wcsp &w)
@@ -1047,7 +1045,7 @@ vector<DnMat> gangsterConst(wcsp &w)
         return constMat;
 }
 
-void writeSol(string f_o, vector<vector<vector<int>>>& aSol)
+void writeSol(string f_o, vector<vector<vector<int>>>& aSol, vector<double>& pSol)
 {
         vector<vector<int>> currentSol;
         string filename(f_o);
@@ -1073,6 +1071,11 @@ void writeSol(string f_o, vector<vector<vector<int>>>& aSol)
                         }
                         file_out << endl;
                 }
+                for (size_t i = 0; i != pSol.size(); i++)
+                {
+                        file_out << pSol[i] << " ";
+                }
+                file_out << endl;
         }
 }
 
@@ -1192,9 +1195,11 @@ int main(int argc, char *argv[])
                 begin = cpuTime();
                 auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
                 end = cpuTime();
-                cout << std::fixed << ' ' << long(pSol) << ' ' << (end - begin);
 
-                writeSol(fo, aSol);
+                double min = *min_element(pSol.begin(), pSol.end());
+                cout << std::fixed << ' ' << long(min) << ' ' << (end - begin);
+
+                writeSol(fo, aSol, pSol);
         }
 
         else
@@ -1240,9 +1245,11 @@ int main(int argc, char *argv[])
                         begin = cpuTime();
                         auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
                         end = cpuTime();
-                        cout << std::fixed << ' ' << long(pSol) << ' ' << (end - begin);
 
-                        writeSol(fo, aSol);
+                        double min = *min_element(pSol.begin(), pSol.end());
+                        cout << std::fixed << ' ' << long(min) << ' ' << (end - begin);
+
+                        writeSol(fo, aSol, pSol);
                 }
                 else
                 {
