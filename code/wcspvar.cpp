@@ -30,32 +30,46 @@ wcspvar::~wcspvar(void)
 {   
 }
 
-void wcspvar::setValue(int value)
+//Tag usefull for preprocessing and multiple rounding;
+//find another solution to make it more robust
+void wcspvar::setValue(int value, bool tag)
 {
     _value = value;
     //Change it for the B&B solver
-    _assigned = false;
+    if (tag)
+    {
+        _assigned = true;
+    }
+    else
+    {
+        _assigned = false; 
+    }
+    
     _domain[value] = 1;
 }
 
-void wcspvar::setDomain(vector<int> dom)
+void wcspvar::setDomain(vector<int> dom, bool tag)
 {
     _domain = dom;
     int domSize = this->domainSize();
-
-    for (int i = 0; i<domSize ; i++)
+    
+    //find another solution to make it more robust
+    if (!_assigned)
     {
-        if (_domain[i] == 1)
+        for (int i = 0; i<domSize ; i++)
         {
-            this->setValue(i);
-        }   
-    }
+            if (_domain[i] == 1)
+            {
+                this->setValue(i, tag);
+            }   
+        }
 
-    //Other case that has to be considered
-    int nbRm = count(dom.begin(),dom.end(),-1);
-    if (nbRm == domSize - 1)
-    {
-        this->setValue(domSize-1);
+        //Other case that has to be considered
+        int nbRm = count(dom.begin(),dom.end(),-1);
+        if (nbRm == domSize - 1)
+        {
+            this->setValue(domSize-1, tag);
+        }
     }
 }
 

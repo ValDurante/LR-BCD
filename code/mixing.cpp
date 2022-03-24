@@ -388,7 +388,8 @@ vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k, int i)
 template <typename T>
 double evalFun(T const &C, const DnMat &V)
 {
-        DnMat A = C * V.transpose() * V;
+        DnMat A = C * V.transpose();
+        A = V * A;
         double eval = A.trace();
 
         return eval;
@@ -850,6 +851,9 @@ DnMat preProcessing(DnMat &Q, wcsp &w)
         vector<int> domains = w.domains();
         int n = Q.cols();
 
+        //setValue makes _assigned = true
+        bool tag = true;
+
         for (size_t i = 0; i != domains.size() - 1; i++)
         {
                 int start = domains[i];
@@ -859,7 +863,7 @@ DnMat preProcessing(DnMat &Q, wcsp &w)
                 {
                         if (Q.col(j).isZero(0))
                         {
-                                pVar[i]->setValue(j - start);
+                                pVar[i]->setValue(j - start, tag);
                                 break;
                         }
                 }
@@ -915,7 +919,10 @@ double deltaObjVar(wcsp &w, size_t var_index)
 
 double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
 {
-        w.assignmentUpdate(rdAssignment);
+        //setValue makes _assigned = false
+        bool tag = false;
+
+        w.assignmentUpdate(rdAssignment, tag);
         const vector<wcspvar *> &pVar = w.getVariables();
         double initial = objectiveFunction(w);
         size_t size = rdAssignment.size();
@@ -940,7 +947,7 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                                 if (j != value)
                                 {
                                         rdAssignment[i][j] = 1;
-                                        w.assignmentUpdate(rdAssignment);
+                                        w.assignmentUpdate(rdAssignment, tag);
                                         curr_val = objBase + deltaObjVar(w, i);
 
                                         if (curr_val < min)
@@ -954,7 +961,7 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
                         }
                         initial = min;
                         rdAssignment[i][indMin] = 1;
-                        w.assignmentUpdate(rdAssignment);
+                        w.assignmentUpdate(rdAssignment, tag);
                 }
         }
         return min + w.getLowerBound();
@@ -966,6 +973,7 @@ tuple<double,vector<vector<vector<int>>>> multipleRounding(const DnMat &V, wcsp 
         vector<vector<int>> rdAssignment_opti;
         vector<vector<vector<int>>> aSol;
         double sol;
+
         for (int i = 0; i != nbRound; i++)
         {
                 rdAssignment_opti = rounding(V, wcsp, k, i);
@@ -1108,7 +1116,7 @@ int main(int argc, char *argv[])
         }
 
         //set tolerance for the stopping criterion
-        double tol = 10e-3; //* 1e9;
+        double tol = 10e-2; //* 1e9;
 
         //set rank
         string srank = argv[4];
@@ -1163,6 +1171,7 @@ int main(int argc, char *argv[])
                 auto end = cpuTime();
 
                 double lb = evalFun(Q, V) + bias(w);
+                cout << std::fixed << ceil(lb) << ' ' << (end - begin);
 
                 if (debug)
                 {
@@ -1179,10 +1188,6 @@ int main(int argc, char *argv[])
                         double gVal = evalConst(M, V);
                         cout << "\nGangster constraint value : " << gVal << "\n";
                 }
-
-                //w.assignmentUpdate(rdAssignment);
-                //long oneOptSol = oneOptSearch(rdAssignment, w);
-                cout << ceil(lb) << ' ' << (end - begin);
 
                 begin = cpuTime();
                 auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
@@ -1229,10 +1234,7 @@ int main(int argc, char *argv[])
                                 cout << "\nGangster constraint value : " << gVal << "\n";
                         }
 
-                        //cout << bias(w) << "\n";
-
                         double lb = evalFun(C_f, V) + bias(w);
-
                         cout << ceil(lb) << ' ' << (end - begin);
 
                         begin = cpuTime();

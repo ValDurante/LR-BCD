@@ -101,13 +101,13 @@ size_t wcsp::getRank(int m)
     return k;
 }
 
-void wcsp::assignmentUpdate(const vector<vector<int>> &assignment)
+void wcsp::assignmentUpdate(const vector<vector<int>> &assignment, bool tag)
 {
     size_t nbVar = assignment.size();
 
     for (size_t i = 0; i < nbVar; i++)
     {
-        _variables[i]->setDomain(assignment[i]);
+        _variables[i]->setDomain(assignment[i], tag);
     }
 }
 

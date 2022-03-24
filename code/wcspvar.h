@@ -23,8 +23,8 @@ public:
 
     void addFunction(wcspfun *f) { functions.push_back(f); };
 
-    void setValue(int);
-    void setDomain(vector<int>);
+    void setValue(int, bool);
+    void setDomain(vector<int>, bool);
     int getValue();
     const vector<int> &getDomain();
     bool isAssigned();

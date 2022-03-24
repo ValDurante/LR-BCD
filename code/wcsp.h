@@ -37,7 +37,7 @@ public:
     const vector<wcspfun *> &getFunctions();
     size_t getSDPSize();
     size_t getRank(int m);
-    void assignmentUpdate(const vector<vector<int>> &assignment);
+    void assignmentUpdate(const vector<vector<int>> &assignment, bool tag);
     void resetWcsp();
     vector<int> domains();
     vector<int> relatDomains();
