@@ -13,7 +13,7 @@ OPTIONS :
 	iterations -it: "-1" for running with default number of iterations
 	"i" for running with specified number of iterations it = i
 
-	rank -r: "-1" for running with default rank 
+	rank -k: "-1" for running with default rank 
 	"-2" for running with default rank/2
 	"-4" for running with default rank/4
 	"r" for running with specified rank k = r
