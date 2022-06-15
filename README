@@ -1,28 +1,39 @@
-Low rank solvers
-
-####################################
-
-benchmark/ : folder with the random instances used in the paper.
+Low rank SDP solvers.
 
 ####################################
 
 code/ : folder that contains the code. 
 
 Usage : ./mixing INPUT_INSTANCE OPTIONS
+
 OPTIONS :
-	solver : "1" for LR-LAS
-		 "2" for LR-BCD
+	solver: "1" for LR-LAS
+			"2" for LR-BCD
 
-	rank : "-1" for running with rank r = ceil(sqrt(2n))
-	       "k" for running with rank r = k
+	iterations -it: "-1" for running with default number of iterations
+					"i" for running with specified number of iterations it = i
 
-	rounding : "k" for computing the best integer solution value
-	           with k rounding schemes
+	rank -r: "-1" for running with default rank 
+	         "-2" for running with default rank/2
+			 "-4" for running with default rank/4
+			 "k" for running with specified rank r = k
 
-example : ./mixing ../benchmark/rd50-3-sparse-0.wcsp 1 -1 50
+	rounding -nbR: "n" for computing the best integer solution value
+	               with nbR = n rounding schemes
+
+	output file -f: return a file with all the rounded integer solutions and their corresponding
+					objective values
+
+example : ./mixing <instance.wcsp> 2 -it=-1 -r=-1 -nbR=10 -f=sol.txt
 
 OUTPUT :
-	[Upper bound value] [lower bound value] [cpu time] [Best upper bound value after rounding schemes] [cpu time rounding schemes]
+	[Lower bound value] [Cpu time SDP resolution] [Best upper bound value after rounding schemes] [Cpu time rounding schemes]
 
-Eigen3 must be installed and the path to eigen3 must be updated in the makefile.  
+####################################
+
+Benchmarks:
+
+Random instances used in the paper can be found at: https://forgemia.inra.fr/thomas.schiex/cost-function-library/-/tree/master/random/pairwise-MRFs
+
+Real instances used in the paper can be found at: https://forgemia.inra.fr/thomas.schiex/cost-function-library/-/tree/master/real/fish
 		  
