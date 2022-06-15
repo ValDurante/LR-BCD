@@ -1,4 +1,10 @@
-Low rank SDP solvers.
+Low Rank SDP Solvers for Pairwise Graphical Models.
+
+####################################
+
+Required library: Eigen3
+
+sudo apt install libeigen3-dev
 
 ####################################
 
@@ -36,4 +42,7 @@ Benchmarks:
 Random instances used in the paper can be found at: https://forgemia.inra.fr/thomas.schiex/cost-function-library/-/tree/master/random/pairwise-MRFs
 
 Real instances used in the paper can be found at: https://forgemia.inra.fr/thomas.schiex/cost-function-library/-/tree/master/real/fish
-		  
+
+####################################
+
+Code version: to run the ICML paper experiments, use the version with tag 'ICML2022' from the repository.
