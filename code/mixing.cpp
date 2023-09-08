@@ -15,9 +15,12 @@
 #include <ctime>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <chrono>
+#include <set>
 
 #include "wcsp.h"
 #include "wcspreader.hh"
+#include "solution.cpp"
 
 using namespace std;
 
@@ -72,29 +75,14 @@ inline double snrm2(const vector<double> &v)
         return sqrt(sdot(v, v));
 }
 
-// Random vector from the standard normal distribution N(0,1)
-void randUnit(vector<double> &v)
-{
-        default_random_engine generator;
-        normal_distribution<double> distribution(0, 1);
-
-        for (size_t i = 0; i != v.size(); i++)
-        {
-                v[i] = distribution(generator);
-        }
-
-        double normV = snrm2(v);
-        sscal(v, 1 / normV);
-}
-
 DnMat mixingInit(wcsp &wcsp, int k)
 {
         default_random_engine generator;
         generator.seed(time(0));
-        normal_distribution<double> distribution(0, 1);
+        // normal_distribution<double> distribution(0, 1); // normal distribution
+        uniform_real_distribution<double> distribution(-1.0, 1.0); // uniform distribution
 
         size_t n = wcsp.getSDPSize() + 1;
-        //size_t k = wcsp.getRank();
         DnMat V = DnMat::Zero(k, n);
 
         for (size_t j = 0; j != n; j++)
@@ -330,16 +318,15 @@ vector<vector<int>> assignmentInit(wcsp &w)
         return assignment;
 }
 
-vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k, int i)
+vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k)
 {
-        //int k = wcsp.getRank();
-        //vector<int> domains = wcsp.relatDomains();
         vector<int> domains = wcsp.domains();
         const vector<wcspvar *> &pVar = wcsp.getVariables();
 
         default_random_engine generator;
-        generator.seed(i + 1);
-        normal_distribution<double> distribution(0, 1);
+        generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+        // normal_distribution<double> distribution(0, 1); // normal distribution
+        uniform_real_distribution<double> distribution(-1.0, 1.0); // uniform distribution
 
         DnVec r(k);
         vector<vector<int>> rdAssignment = assignmentInit(wcsp);
@@ -589,16 +576,37 @@ double newton(const DnMat &G, const DnVec &u, double x, int d, int maxiter, int 
 {
         double x_curr = x;
         double jac = jac_h(G, u, x, d);
+        double jac_curr = jac;
         int it = 0;
         double eps = pow(10, -7);
 
-        while (abs(jac) > eps && it < maxiter)
-        {
-                x_curr = x_curr - 0.90 * jac_h(G, u, x_curr, d) / hess_h(G, u, x_curr, d);
-                jac = jac_h(G, u, x_curr, d);
-                it++;
-        }
+        double step_size = 0.80;
+        double alpha = 0.60; // correction parameter for the step size
 
+        bool converged = false;
+
+        while (!converged)
+        {
+                converged = true;
+                while (abs(jac) > eps && it < maxiter)
+                {
+                        x_curr = x_curr - step_size * jac_h(G, u, x_curr, d) / hess_h(G, u, x_curr, d);
+                        jac = jac_h(G, u, x_curr, d);
+                        it++;
+
+                        if (abs(jac) >= abs(jac_curr)) // newton has to be restarted
+                        {
+                                step_size *= alpha; // reduce the step size
+                                x_curr = x;
+                                jac = jac_h(G, u, x, d);
+                                it = 0;
+                                converged = false;
+                                break;
+                        }
+
+                        jac_curr = jac;
+                }
+        }
         N_it = N_it + it;
 
         return x_curr;
@@ -967,20 +975,61 @@ double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
         return min + w.getLowerBound();
 }
 
-tuple<vector<double>,vector<vector<vector<int>>>> multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
+std::set<Solution> multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
+{
+        std::set<Solution> intSol;
+        vector<vector<int>> rdAssignment;
+        double sol;
+        bool tag = false;
+        int i = 0;
+
+        int not_new = 0; // check whether the new solution is already present in the set;
+
+        
+        while (i < nbRound)
+        {
+                rdAssignment = rounding(V, wcsp, k);
+                wcsp.assignmentUpdate(rdAssignment, tag); 
+                sol = objectiveFunction(wcsp) + wcsp.getLowerBound();
+                Solution new_solution(rdAssignment, sol);
+
+                if (intSol.find(new_solution) == intSol.end()) {
+			intSol.insert(new_solution);
+			i++;
+		} else {
+                        not_new++;
+                        if (not_new > nbRound) {
+                                break;
+                        }
+                }
+
+        }
+
+        return intSol;
+}
+
+tuple<vector<double>, vector<vector<vector<int>>>> multipleOneOptSearch(std::set<Solution> &intSol, wcsp &w, int nbOneOpt)
 {
         vector<double> pSol;
-        vector<vector<int>> rdAssignment_opti;
         vector<vector<vector<int>>> aSol;
-        double sol;
+        vector<vector<int>> rdAssignment;
+        double oneOptSol;
+        int i = 0;
 
-        for (int i = 0; i != nbRound; i++)
-        {
-                rdAssignment_opti = rounding(V, wcsp, k, i);
-                sol = oneOptSearch(rdAssignment_opti, wcsp);
-                pSol.push_back(sol);
-                aSol.push_back(rdAssignment_opti);
-        }
+        for(std::set<Solution>::iterator it = intSol.begin(); it != intSol.end(); ++it) {
+
+                rdAssignment = (*it).getAssignment();
+                oneOptSol = oneOptSearch(rdAssignment, w);
+                pSol.push_back(oneOptSol);
+                aSol.push_back(rdAssignment);
+
+                i++;
+
+                if (i == nbOneOpt)
+                {
+                        break;
+                }
+	}
 
         return make_tuple(pSol, aSol);
 }
@@ -1119,7 +1168,7 @@ int main(int argc, char *argv[])
         }
 
         //set tolerance for the stopping criterion
-        double tol = 10e-2; //* 1e9;
+        double tol = 1e-3;
 
         //set rank
         string srank = argv[4];
@@ -1148,115 +1197,46 @@ int main(int argc, char *argv[])
         string file = argv[6];
         string fo = file.substr(3, file.size() - 3);
 
-        if (stoi(argv[2]) == 1)
-        {
+        vector<vector<vector<int>>> listRdAssignment;
 
-                if (debug)
-                {
-                        cout << "\nDualization method";
-                }
-                if (debug)
-                {
-                        cout << "\nThe penalty coefficient is : " << w.penaltyCoeff();
-                }
+        int method = stoi(argv[2]); // 1 for LR-LAS, 2 for LR-BCD
+        DnMat Q;
+        DnMat V;
 
-                //compute the Rho lower bound
-                DnMat Q = w.dualMat();
+        // Compute cost matrix
+        if (method == 1){ // LR-LAS
+                Q = w.dualMat();
 
-                if (debug)
-                {
-                        double rho = w.penaltyCoeff();
-                        cout << "\nPenalty coefficient" << rho;
-                }
-
-                auto begin = cpuTime();
-                DnMat V = doMixing(w, Q, tol, maxiter, k);
-                auto end = cpuTime();
-
-                double lb = evalFun(Q, V) + bias(w);
-                cout << std::fixed << ceil(lb) << ' ' << (end - begin);
-
-                if (debug)
-                {
-                        DnVec d = buildDual(V, Q, tol);
-                        double dValue = evalDual(d, Q) + bias(w);
-
-                        cout << "\nThe dual lower bound is : " << dValue;
-                }
-
-                // Constraints checking
-                if (debug)
-                {
-                        DnMat M = w.gOperator();
-                        double gVal = evalConst(M, V);
-                        cout << "\nGangster constraint value : " << gVal << "\n";
-                }
-
-                begin = cpuTime();
-                auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
-                end = cpuTime();
-
-                double min = *min_element(pSol.begin(), pSol.end());
-                cout << std::fixed << ' ' << long(min) << ' ' << (end - begin);
-
-                writeSol(fo, aSol, pSol);
+        } else {        // LR-BCD
+                DnMat C = w.SDPmat();
+                Q = preProcessing(C, w);
         }
-
-        else
-        {
-                if (stoi(argv[2]) == 2)
-                {
-                        if (debug)
-                        {
-                                cout << "\nBCD method";
-                        }
-
-                        //Compute the BCD lower bound
-                        DnMat C = w.SDPmat();
-
-                        if (debug)
-                        {
-                                cout << "\nC rows" << C.rows();
-                                cout << "\nC cols" << C.cols();
-                        }
-
-                        DnMat C_f = preProcessing(C, w);
-
-                        if (debug)
-                        {
-                                cout << "\nC_f rows" << C_f.rows();
-                                cout << "\nC_f cols" << C_f.cols();
-                        }
-
-                        auto begin = cpuTime();
-                        DnMat V = doBCDMixing(w, C_f, tol, maxiter, k);
-                        auto end = cpuTime();
-                         
-                        if (debug)
-                        {
-                                DnMat M = w.gOperator();
-                                double gVal = evalConst(M, V);
-                                cout << "\nGangster constraint value : " << gVal << "\n";
-                        }
-
-                        double lb = evalFun(C_f, V) + bias(w);
-                        cout << ceil(lb) << ' ' << (end - begin);
-
-                        begin = cpuTime();
-                        auto [pSol, aSol] = multipleRounding(V, w, nbR, k);
-                        end = cpuTime();
-
-                        double min = *min_element(pSol.begin(), pSol.end());
-                        cout << std::fixed << ' ' << long(min) << ' ' << (end - begin);
-
-                        writeSol(fo, aSol, pSol);
-                }
-                else
-                {
-                        cout << "\nTry again !";
-                }
+        
+        auto begin = cpuTime();
+        if (method == 1){ // LR-LAS
+                V = doMixing(w, Q, tol, maxiter, k);
+        } else {        // LR-BCD
+                V = doBCDMixing(w, Q, tol, maxiter, k);
         }
+        auto end = cpuTime();
 
+        double lb = evalFun(Q, V) + bias(w);
+        cout << std::fixed << "\n" << ceil(lb) << ' ' << (end - begin);
+
+        vector<double> pSol;
+        vector<vector<vector<int>>> aSol;
+        int nbOneOpt = nbR;
+
+        begin = cpuTime();
+        std::set<Solution> intSol = multipleRounding(V, w, nbR, k);
+        tie(pSol, aSol) = multipleOneOptSearch(intSol, w, nbOneOpt);
+        end = cpuTime();
+
+        double min = *min_element(pSol.begin(), pSol.end());
+        cout << std::fixed << ' ' << long(min) << ' ' << (end - begin);
+
+        writeSol(fo, aSol, pSol);
+                        
         return 0;
 }
 
