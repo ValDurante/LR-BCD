@@ -40,41 +40,6 @@ static inline double cpuTime(void)
         return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000;
 }
 
-// Initializes to 0 the memory block pointed by v
-void szero(double *v, int l);
-
-// y = a*x + y
-void saxpy(const double *y, double a, const double *x, int l);
-
-// x = a*x
-inline void sscal(vector<double> &x, double a)
-{
-        for (size_t i = 0; i != x.size(); i++)
-        {
-                x[i] = a * x[i];
-        }
-}
-
-// dot product x^Ty
-inline double sdot(const vector<double> &x, const vector<double> &y)
-{
-        double acc = 0;
-        size_t vSize = x.size();
-
-        for (size_t i = 0; i != vSize; i++)
-        {
-                acc = acc + x[i] * y[i];
-        }
-
-        return acc;
-}
-
-// 2-norm of a vector
-inline double snrm2(const vector<double> &v)
-{
-        return sqrt(sdot(v, v));
-}
-
 DnMat mixingInit(wcsp &wcsp, int k)
 {
         default_random_engine generator;
@@ -583,30 +548,24 @@ double newton(const DnMat &G, const DnVec &u, double x, int d, int maxiter, int 
         double step_size = 0.80;
         double alpha = 0.60; // correction parameter for the step size
 
-        bool converged = false;
-
-        while (!converged)
+        
+        while (abs(jac) > eps && it < maxiter)
         {
-                converged = true;
-                while (abs(jac) > eps && it < maxiter)
+                x_curr = x_curr - step_size * jac_h(G, u, x_curr, d) / hess_h(G, u, x_curr, d);
+                jac = jac_h(G, u, x_curr, d);
+                it++;
+
+                if (abs(jac) >= abs(jac_curr)) // step_size has to be updated
                 {
-                        x_curr = x_curr - step_size * jac_h(G, u, x_curr, d) / hess_h(G, u, x_curr, d);
-                        jac = jac_h(G, u, x_curr, d);
-                        it++;
-
-                        if (abs(jac) >= abs(jac_curr)) // newton has to be restarted
-                        {
-                                step_size *= alpha; // reduce the step size
-                                x_curr = x;
-                                jac = jac_h(G, u, x, d);
-                                it = 0;
-                                converged = false;
-                                break;
-                        }
-
-                        jac_curr = jac;
+                        step_size *= alpha; // reduce the step size
+                        x_curr = x;
+                        jac = jac_h(G, u, x, d);
+                        it = 0;
                 }
+
+                jac_curr = jac;
         }
+     
         N_it = N_it + it;
 
         return x_curr;
@@ -639,27 +598,20 @@ void solveBCD(const DnMat &C, DnMat &V, const DnVec &u, const vector<int> &domai
 DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
 {
         vector<int> domains = wcsp.relatDomains();
-        //int k = wcsp.getRank();
         int d = wcsp.getSDPSize();
-        double delta = 0;
         int BCD_it = 0;
         int N_it = 0;
         DnVec q(d + 1);
         DnVec g(k);
+        bool stop = false;
 
-        if (debug)
-        {
-                cout << "\nLe rang k est : " << k;
-        }
+        // Stopping criteria
+        double delta = 0;
 
         //V init
         DnMat V = mixingInit(wcsp, k);
-
-        if (debug)
-        {
-                cout << "\n"
-                     << delta;
-        } //test
+        DnMat V_old = V;
+        double f_val = evalFun(C, V); 
 
         for (int i = 0; i != maxiter; i++)
         {
@@ -673,41 +625,47 @@ DnMat doBCDMixing(wcsp &wcsp, const DnMat &C, double tol, int maxiter, int k)
 
                 BCD_it++;
 
-                if (delta < tol)       //* 1e9)
+                assert(delta > 0); // delta should always be positive
+                DnMat V_diff = V - V_old;
+                double fun_criterion = delta / (1 + fabs(f_val));
+                double step_criterion = V_diff.norm() / (1 + V_old.norm()); 
+                
+                stop = (fun_criterion < tol) || (step_criterion < tol);
+
+                V_old = V;
+                f_val -= delta;
+
+                if (stop)
                 {
                         break;
                 }
-
-                if (debug)
-                {
-                        cout << "\n"
-                             << delta;
-                }
         }
 
-        if (debug)
-        {
-                cout << "\nNb of iterations : " << BCD_it;
-                cout << N_it << ' ' << BCD_it << ' ';
-        }
         return V;
 }
 
 DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 {
-        //int k = wcsp.getRank();
         int d = wcsp.getSDPSize();
         int it = 0;
-        DnMat V = mixingInit(wcsp, k);
         DnVec g(k);
         DnVec v(k);
         DnVec q(d + 1);
+        bool stop = false;
 
-        //cout << "\nLe rang k est : " << k;
+        // Stopping criteria
+        double delta = 0;
+
+        //V init
+        DnMat V = mixingInit(wcsp, k);
+        DnMat V_old = V;
+        double f_val = evalFun(Q, V);
+
+
 
         for (int i = 0; i != maxiter; i++)
         {
-                double delta = 0;
+                delta = 0;
                 for (int j = 0; j != d + 1; j++)
                 {
                         q = Q.row(j);
@@ -730,25 +688,23 @@ DnMat doMixing(wcsp &wcsp, const DnMat &Q, double tol, int maxiter, int k)
 
                 it++;
 
-                if (delta < tol)           //* 1e9)
+                assert(delta > 0); // delta should always be positive
+                DnMat V_diff = V - V_old;
+                double fun_criterion = delta / (1 + fabs(f_val));
+                double step_criterion = V_diff.norm() / (1 + V_old.norm()); 
+                
+                stop = (fun_criterion < tol) || (step_criterion < tol);
+
+                if (stop)
                 {
                         break;
                 }
 
-                if (debug)
-                {
-                        double iter_n;
-                        iter_n = evalFun(Q, V);
-                        cout << "\n"
-                             << iter_n;
-                }
+                V_old = V;
+                f_val -= delta;
+
         }
 
-        if (debug)
-        {
-                cout << "\nNb of iterations : " << it;
-                cout << it << ' ';
-        }
         return V;
 }
 
@@ -1168,7 +1124,7 @@ int main(int argc, char *argv[])
         }
 
         //set tolerance for the stopping criterion
-        double tol = 1e-3;
+        double tol = 1e-7;
 
         //set rank
         string srank = argv[4];
