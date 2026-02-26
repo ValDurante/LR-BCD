@@ -4,19 +4,15 @@
 #define _USE_MATH_DEFINES
 
 #include <vector>
-// #include <intrin.h>
 #include <iostream>
-#include <memory>
 #include <random>
 #include <algorithm>
-#include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Dense>
 #include <cmath>
-#include <ctime>
+#include <float.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <chrono>
-#include <set>
 
 #include "wcsp.h"
 #include "wcspreader.hh"
@@ -134,58 +130,61 @@ vector<vector<int>> assignmentInit(wcsp &w)
         return assignment;
 }
 
-vector<vector<int>> rounding(const DnMat &V, wcsp &wcsp, int k)
+// draw a random vector from the standard normal distribution N(0,1)
+// and normalize it
+// In :
+//      - DnVec &v
+//      - size_t k
+//      - default_random_engine &generator
+//      - normal_distribution<Double> &distribution
+void randUnit(DnVec& v, size_t k, default_random_engine& generator, normal_distribution<double>& distribution)
 {
-        vector<int> domains = wcsp.domains();
-        const vector<wcspvar *> &pVar = wcsp.getVariables();
+    assert(k > 0);
 
-        default_random_engine generator;
-        generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
-        // normal_distribution<double> distribution(0, 1); // normal distribution
-        uniform_real_distribution<double> distribution(-1.0, 1.0); // uniform distribution
+    for (size_t i = 0; i < k; i++) {
+        v(i) = distribution(generator);
+    }
 
-        DnVec r(k);
-        vector<vector<int>> rdAssignment = assignmentInit(wcsp);
+    v = v / v.norm();
+}
 
-        for (int i = 0; i < k; i++)
-        {
-                r(i) = distribution(generator);
+DnVec rounding(const DnMat& V, const vector<int>& domains, size_t n, size_t k, int i)
+{
+    assert(n > 0);
+    assert(k > 0);
+
+    default_random_engine generator;
+    generator.seed(i + 1);
+    normal_distribution<double> distribution(0, 1);
+
+    DnVec r = DnVec::Zero(k);
+    DnVec intSol = DnVec::Constant(n, -1.0);
+    intSol(n - 1) = 1; // last value for homogenization must be equal to 1
+
+    randUnit(r, k, generator, distribution);
+
+    for (size_t i = 0; i < domains.size() - 1; i++) {
+        int first = domains[i];
+        int last = domains[i + 1];
+
+        int ind = first;
+        double max = fabs(r.dot(V.col(first)));
+        double previous_max = max;
+
+        for (size_t j = first + 1; j < last; j++) {
+            // compute new trial point
+            max = fabs(r.dot(V.col(j)));
+
+            if (max > previous_max) {
+                previous_max = max;
+                ind = j;
+            }
         }
 
-        r = r / r.norm();
+        intSol(ind) = 1;
+    }
 
-        int var = 0; //if a var is already assigned we need to shift the remaining indices in domains
-        for (size_t i = 0; i < pVar.size(); i++)
-        {
-                if (pVar[i]->isAssigned())
-                {
-                        rdAssignment[i] = pVar[i]->getDomain();
-                }
-
-                else
-                {
-                        int l = domains[var];
-                        int ind = 0;
-
-                        double max = r.dot(V.col(l));
-                        double n_max = max;
-
-                        for (int j = domains[var] + 1; j < domains[var + 1]; j++)
-                        {
-                                max = r.dot(V.col(j));
-                                if (max > n_max)
-                                {
-                                        ind++;
-                                        n_max = max;
-                                }
-                        }
-
-                        rdAssignment[i][ind] = 1;
-                        var++;
-                }
-        }
-
-        return rdAssignment;
+    return intSol;
 }
 
 template <typename T>
@@ -196,6 +195,21 @@ double evalFun(T const &C, const DnMat &V)
         double eval = A.trace();
 
         return eval;
+}
+
+// Evaluate vector objective function
+// In :
+//      - const DnMat &C: objective matrix
+//      - const DnVec &V: vector
+// Out :
+//      - Double eval : function value
+double evalFun(const DnMat& C, const DnVec& V)
+{
+
+    DnVec A = C * V;
+    double eval = V.dot(A);
+
+    return eval;
 }
 
 /*
@@ -571,6 +585,7 @@ double deltaObjVar(wcsp &w, size_t var_index)
         return objectiveValue;
 }
 
+/*
 double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
 {
         //setValue makes _assigned = false
@@ -678,6 +693,118 @@ tuple<vector<double>, vector<vector<vector<int>>>> multipleOneOptSearch(std::set
 	}
 
         return make_tuple(pSol, aSol);
+}
+*/
+
+// Apply one opt search to the integer solution
+// In :
+//      - const DnMat &C
+//      - const vector<size_t> &domains
+//      - DnVec &x
+//      - Double f
+//      - size_t n
+// Out :
+//      - Double min : value of the new solution after 1-opt
+double oneOptSearch(const DnMat& C, const vector<int>& domains, DnVec& x, double f, size_t n)
+{
+    assert(n > 0);
+
+    bool changed = true;
+    DnVec work = DnVec::Zero(n);
+    double min = f;
+    double cont = 0;
+
+    while (changed) {
+
+        changed = false;
+
+        for (size_t i = 0; i < domains.size() - 1; i++) {
+
+            int first = domains[i];
+            int last = domains[i + 1];
+
+            // flip the entry 1 to -1 in the domain of each variable
+            size_t ind = first;
+            double current_value = min;
+
+            for (size_t j = first; j < last; j++) {
+                if (x(j) == 1) {
+                    x(j) = -1;
+                    ind = j;
+                }
+            }
+            size_t indMin = ind;
+
+            // remove contribution of x(ind)
+            work = C.col(ind);
+            work(ind) = 0;
+
+            cont = x.dot(work);
+            current_value += 4.0 * cont * x(ind);
+
+            for (size_t j = first; j < last; j++) {
+                // add contribution of x(j)
+                // remove contribution of x(ind)
+                work = C.col(j);
+                work(j) = 0;
+
+                cont = x.dot(work);
+                current_value -= 4.0 * cont * x(j);
+
+                if (current_value < min - 1e-7) {
+                    min = current_value;
+                    indMin = j;
+                    changed = true;
+                }
+
+                current_value += 4.0 * cont * x(j);
+            }
+            // f = current_min;
+            // cout << "\nValues of f: " << f;
+            x(indMin) = 1;
+        }
+    }
+
+    return min;
+}
+
+// Do multiple roundings and keep the best solution
+// In :
+//      - WeightedCSP* wcsp
+//      - const DnMat &C
+//      - DnMat &V
+//      - const vector<int> &domains
+//      - size_t nbRound
+//      - size_t n
+//      - size_t k
+// Out :
+//      - Double min : value of the new solution after multiple 1-opt
+//      - DnVec bestSol : best integer solution found
+tuple<double, DnVec> multipleRounding(wcsp& wcsp, const DnMat& C, DnMat& V,
+    const vector<int> domains, size_t nbRound, size_t n, size_t k)
+{
+    assert(nbRound > 0);
+    assert(n > 0);
+    assert(k > 0);
+
+    DnVec work(n);
+    DnVec bestSol = work;
+    double min = DBL_MAX;
+    double trial_sol = min;
+    double b = bias(wcsp);
+
+    for (size_t i = 0; i < nbRound; i++) {
+        work = rounding(V, domains, n, k, i);
+        trial_sol = evalFun(C, work) + b;
+        trial_sol = oneOptSearch(C, domains, work, trial_sol, n);
+
+        if (trial_sol < min) {
+            min = trial_sol;
+            bestSol = work;
+        }
+    }
+
+    return make_tuple(min, bestSol);
 }
 
 void writeSol(string f_o, vector<vector<vector<int>>>& aSol, vector<double>& pSol)
@@ -809,19 +936,19 @@ int main(int argc, char *argv[])
         double lb = evalFun(Q, V) + bias(w);
         cout << std::fixed << "\n" << ceil(lb) << ' ' << (end - begin);
 
-        vector<double> pSol;
-        vector<vector<vector<int>>> aSol;
-        int nbOneOpt = nbR;
+        // compute upper bound with GW heuristic
+        vector<int> dom = w.domains();
+        DnVec intSol;
+        double ub_oneopt = DBL_MAX;
+        int n = w.getSDPSize() + 1;
 
         begin = cpuTime();
-        std::set<Solution> intSol = multipleRounding(V, w, nbR, k);
-        tie(pSol, aSol) = multipleOneOptSearch(intSol, w, nbOneOpt);
+        tie(ub_oneopt, intSol) = multipleRounding(w, Q, V, dom, nbR, n, k);
         end = cpuTime();
 
-        double min = *min_element(pSol.begin(), pSol.end());
-        cout << std::fixed << ' ' << long(min) << ' ' << (end - begin);
+        cout << std::fixed << ' ' << long(ub_oneopt) << ' ' << (end - begin) << endl;
 
-        writeSol(fo, aSol, pSol);
+        //writeSol(fo, aSol, pSol);
                         
         return 0;
 }
