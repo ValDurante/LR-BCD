@@ -585,117 +585,6 @@ double deltaObjVar(wcsp &w, size_t var_index)
         return objectiveValue;
 }
 
-/*
-double oneOptSearch(vector<vector<int>> &rdAssignment, wcsp &w)
-{
-        //setValue makes _assigned = false
-        bool tag = false;
-
-        w.assignmentUpdate(rdAssignment, tag);
-        const vector<wcspvar *> &pVar = w.getVariables();
-        double initial = objectiveFunction(w);
-        size_t size = rdAssignment.size();
-        double min = initial;
-        double curr_val;
-        bool changed = true;
-
-        while (changed)
-        {
-                changed = false;
-                for (size_t i = 0; i < size; i++)
-                {
-                        size_t size_i = rdAssignment[i].size();
-                        size_t value = pVar[i]->getValue();
-                        double objBase = initial - deltaObjVar(w, i);
-
-                        rdAssignment[i][value] = 0;
-                        int indMin = value;
-
-                        for (size_t j = 0; j < size_i; j++)
-                        {
-                                if (j != value)
-                                {
-                                        rdAssignment[i][j] = 1;
-                                        w.assignmentUpdate(rdAssignment, tag);
-                                        curr_val = objBase + deltaObjVar(w, i);
-
-                                        if (curr_val < min)
-                                        {
-                                                min = curr_val;
-                                                indMin = j;
-                                                changed = true;
-                                        }
-                                        rdAssignment[i][j] = 0;
-                                }
-                        }
-                        initial = min;
-                        rdAssignment[i][indMin] = 1;
-                        w.assignmentUpdate(rdAssignment, tag);
-                }
-        }
-        return min + w.getLowerBound();
-}
-
-std::set<Solution> multipleRounding(const DnMat &V, wcsp &wcsp, int nbRound, int k)
-{
-        std::set<Solution> intSol;
-        vector<vector<int>> rdAssignment;
-        double sol;
-        bool tag = false;
-        int i = 0;
-
-        int not_new = 0; // check whether the new solution is already present in the set;
-
-        
-        while (i < nbRound)
-        {
-                rdAssignment = rounding(V, wcsp, k);
-                wcsp.assignmentUpdate(rdAssignment, tag); 
-                sol = objectiveFunction(wcsp) + wcsp.getLowerBound();
-                Solution new_solution(rdAssignment, sol);
-
-                if (intSol.find(new_solution) == intSol.end()) {
-			intSol.insert(new_solution);
-			i++;
-		} else {
-                        not_new++;
-                        if (not_new > nbRound) {
-                                break;
-                        }
-                }
-
-        }
-
-        return intSol;
-}
-
-tuple<vector<double>, vector<vector<vector<int>>>> multipleOneOptSearch(std::set<Solution> &intSol, wcsp &w, int nbOneOpt)
-{
-        vector<double> pSol;
-        vector<vector<vector<int>>> aSol;
-        vector<vector<int>> rdAssignment;
-        double oneOptSol;
-        int i = 0;
-
-        for(std::set<Solution>::iterator it = intSol.begin(); it != intSol.end(); ++it) {
-
-                rdAssignment = (*it).getAssignment();
-                oneOptSol = oneOptSearch(rdAssignment, w);
-                pSol.push_back(oneOptSol);
-                aSol.push_back(rdAssignment);
-
-                i++;
-
-                if (i == nbOneOpt)
-                {
-                        break;
-                }
-	}
-
-        return make_tuple(pSol, aSol);
-}
-*/
-
 // Apply one opt search to the integer solution
 // In :
 //      - const DnMat &C
@@ -807,9 +696,8 @@ tuple<double, DnVec> multipleRounding(wcsp& wcsp, const DnMat& C, DnMat& V,
     return make_tuple(min, bestSol);
 }
 
-void writeSol(string f_o, vector<vector<vector<int>>>& aSol, vector<double>& pSol)
+void writeSol(string f_o, const double ub, const DnVec& solution)
 {
-        vector<vector<int>> currentSol;
         string filename(f_o);
         fstream file_out;
         file_out.open(f_o, std::ios_base::out);
@@ -820,24 +708,17 @@ void writeSol(string f_o, vector<vector<vector<int>>>& aSol, vector<double>& pSo
         }
         else 
         {
-                for (size_t i = 0; i < aSol.size(); i++)
+                for (size_t i = 0; i < solution.size() - 1; i++)
                 {
-                        currentSol = aSol[i];
-
-                        for (size_t j = 0; j < currentSol.size(); j++)
+                        if (solution(i) == -1)
                         {
-                                for (size_t k = 0; k < currentSol[j].size(); k++)
-                                {
-                                        file_out << currentSol[j][k] << " ";
-                                }
+                                file_out << 0 << " ";
+                        } else {
+                                file_out << 1 << " ";
                         }
-                        file_out << endl;
-                }
-                for (size_t i = 0; i < pSol.size(); i++)
-                {
-                        file_out << pSol[i] << " ";
                 }
                 file_out << endl;
+                file_out << ub << endl;
         }
 }
 
@@ -881,7 +762,7 @@ int main(int argc, char *argv[])
         }
 
         //set tolerance for the stopping criterion
-        double tol = 1e-4;
+        double tol = 1e-5;
 
         //set rank
         string srank = argv[4];
@@ -948,7 +829,7 @@ int main(int argc, char *argv[])
 
         cout << std::fixed << ' ' << long(ub_oneopt) << ' ' << (end - begin) << endl;
 
-        //writeSol(fo, aSol, pSol);
+        writeSol(fo, ub_oneopt, intSol);
                         
         return 0;
 }
