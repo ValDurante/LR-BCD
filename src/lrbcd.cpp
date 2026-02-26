@@ -557,34 +557,6 @@ DnMat preProcessing(DnMat &Q, wcsp &w)
         return Q_f;
 }
 
-double objectiveFunction(wcsp &w)
-{
-        const vector<wcspfun *> &pfun = w.getFunctions();
-        double objectiveValue = 0;
-
-        for (size_t i = 0; i < pfun.size(); i++)
-        {
-                double value = pfun[i]->getAssignment();
-                objectiveValue = objectiveValue + value;
-        }
-
-        return objectiveValue;
-}
-
-double deltaObjVar(wcsp &w, size_t var_index)
-{
-        wcspvar *varp = w.getVariables()[var_index];
-        const vector<wcspfun *> &pfun = varp->functions;
-        double objectiveValue = 0;
-
-        for (size_t i = 0; i < pfun.size(); i++)
-        {
-                objectiveValue += pfun[i]->getAssignment();
-        }
-
-        return objectiveValue;
-}
-
 // Apply one opt search to the integer solution
 // In :
 //      - const DnMat &C
