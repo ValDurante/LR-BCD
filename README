@@ -8,9 +8,18 @@ sudo apt install libeigen3-dev
 
 ####################################
 
-code/ : folder that contains the code. 
+# lrbcd compilation
 
-Usage : ./mixing INPUT_INSTANCE OPTIONS
+```bash
+mkdir build 
+cd build 
+cmake -DCMAKE_BUILD_TYPE=<Release/Debug> .. 
+cmake --build .
+```
+
+src/ : folder that contains the code. 
+
+Usage : ./lrbcd INPUT_INSTANCE OPTIONS
 
 OPTIONS :
 	solver: "1" for LR-LAS
@@ -30,7 +39,7 @@ OPTIONS :
 	output file -f: return a file with all the rounded integer solutions and their corresponding
 	objective values
 
-example : ./mixing <instance.wcsp> 2 -it=-1 -k=-1 -nbR=10 -f=sol.txt
+example : ./lrbcd <instance.wcsp> 2 -it=-1 -k=-1 -nbR=10 -f=sol.txt
 
 OUTPUT :
 	[Lower bound value] [Cpu time SDP resolution] [Best upper bound value after rounding schemes] [Cpu time rounding schemes]
