@@ -46,6 +46,15 @@ wcsp::wcsp()
 
 wcsp::~wcsp()
 {
+    //delete variables
+    for(size_t i = 0; i < _variables.size(); i++) {
+        delete _variables[i];
+    }
+
+    //delete functions
+    for(size_t i = 0; i < _functions.size(); i++) {
+        delete _functions[i];
+    }
 }
 
 double wcsp::getUpperBound()
@@ -78,7 +87,7 @@ size_t wcsp::getSDPSize()
     size_t d = 0;
     size_t nbVar = _variables.size();
 
-    for (size_t i = 0; i != nbVar; ++i)
+    for (size_t i = 0; i < nbVar; ++i)
     {
         d = d + _variables[i]->relatDomainSize(); //relatDomainSize() for the nodes or domainSize() for the root
     }
@@ -114,7 +123,7 @@ void wcsp::assignmentUpdate(const vector<vector<int>> &assignment, bool tag)
 void wcsp::resetWcsp()
 {
     size_t nbVar = _variables.size();
-    for (size_t i = 0; i != nbVar; i++)
+    for (size_t i = 0; i < nbVar; i++)
     {
         _variables[i]->resetVariable();
     }
@@ -131,7 +140,7 @@ vector<int> wcsp::domains()
     dom.push_back(acc);
     const vector<wcspvar *> &pVar = this->getVariables();
 
-    for (size_t i = 0; i != (pVar.size()); i++)
+    for (size_t i = 0; i < pVar.size(); i++)
     {
         acc = acc + pVar[i]->domainSize();
         dom.push_back(acc);
@@ -147,7 +156,7 @@ vector<int> wcsp::relatDomains()
     dom.push_back(acc);
     const vector<wcspvar *> &pVar = this->getVariables();
 
-    for (size_t i = 0; i != (pVar.size()); i++)
+    for (size_t i = 0; i < pVar.size(); i++)
     {
         if (!pVar[i]->isAssigned())
         {
@@ -168,11 +177,11 @@ DnVec wcsp::unaryCostVector()
     size_t d = this->getSDPSize();
     vector<int> domains = this->domains();
 
-    DnVec U(d);
+    DnVec U = DnVec::Zero(d);
 
     //U.reserve(d);
 
-    for (size_t i = 0; i != _functions.size(); i++)
+    for (size_t i = 0; i < _functions.size(); i++)
     {
         const vector<int> &pInd = _functions[i]->getIndices();
 
@@ -182,7 +191,7 @@ DnVec wcsp::unaryCostVector()
             int ind = domains[pInd[0]];
             vector<double> costs = _functions[i]->getCosts();
 
-            for (size_t j = 0; j != costs.size(); j++)
+            for (size_t j = 0; j < costs.size(); j++)
             {
                 if (costs[j] != 0)
                 {
@@ -201,7 +210,7 @@ DnMat wcsp::binaryCostMatrix()
     size_t d = this->getSDPSize();
     vector<int> domains = this->domains();
 
-    DnMat C(d, d);
+    DnMat C = DnMat::Zero(d, d);
 
     /*
     size_t domSize = _variables[0]->domainSize();
@@ -210,7 +219,7 @@ DnMat wcsp::binaryCostMatrix()
     C.reserve(estimation_of_entries);
     */
 
-    for (size_t i = 0; i != _functions.size(); i++)
+    for (size_t i = 0; i < _functions.size(); i++)
     {
         const vector<int> &pInd = _functions[i]->getIndices();
 
@@ -223,7 +232,7 @@ DnMat wcsp::binaryCostMatrix()
             int indY = domains[pInd[1]];
             vector<double> costs = _functions[i]->getCosts();
 
-            for (size_t j = 0; j != costs.size(); j++)
+            for (size_t j = 0; j < costs.size(); j++)
             {
                 if (costs[j] != 0)
                 {
@@ -252,7 +261,7 @@ DnMat wcsp::SDPmat()
     DnVec U = this->unaryCostVector();
     DnMat C = this->binaryCostMatrix();
     size_t d = this->getSDPSize();
-    DnMat Q(d + 1, d + 1);
+    DnMat Q = DnMat::Zero(d + 1, d + 1);
 
     /*
     size_t domSize = _variables[0]->domainSize();
@@ -266,25 +275,6 @@ DnMat wcsp::SDPmat()
     DnVec e = DnVec::Ones(d);
     DnVec U_m = 0.5 * (U + C * e);
     U_m = 0.5 * U_m;
-
-    /*
-    for (int k = 0; k < C_m.outerSize(); ++k)
-    {
-        for (SpMat::InnerIterator it(C_m, k); it; ++it)
-        {
-            Q.insert(it.row(), it.col()) = it.value();
-        }
-    }
-
-    for (int i = 0; i != U_m.size(); i++)
-    {
-        if (U_m(i) != 0)
-        {
-            Q.insert(i, d) = U_m(i);
-            Q.insert(d, i) = U_m(i);
-        }
-    }
-    */
 
     Q.block(0, 0, d, d) = C_m;
     Q.block(0, d, d, 1) = U_m;
@@ -302,9 +292,9 @@ SpMat wcsp::constMat()
     SpMat A(N, d);
     A.reserve(d);
 
-    for (size_t i = 0; i != domains.size() - 1; i++)
+    for (size_t i = 0; i < domains.size() - 1; i++)
     {
-        for (int j = domains[i]; j != domains[i + 1]; j++)
+        for (int j = domains[i]; j < domains[i + 1]; j++)
             A.insert(i, j) = 1;
     }
 
@@ -416,7 +406,7 @@ vector<int> wcsp::validRows()
     vector<int> domains = this->domains();
     vector<int> vRows;
 
-    for (size_t i = 0; i != pVar.size(); i++)
+    for (size_t i = 0; i < pVar.size(); i++)
     {
         int curr_dom = domains[i];
         if (pVar[i]->isAssigned())
@@ -427,7 +417,7 @@ vector<int> wcsp::validRows()
         {
             vector<int> dom = pVar[i]->getDomain();
 
-            for (size_t j = 0; j != dom.size(); j++)
+            for (size_t j = 0; j < dom.size(); j++)
             {
                 if (dom[j] == 0)
                 {

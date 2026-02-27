@@ -127,7 +127,7 @@ size_t wcspvar::relatDomainSize()
 void wcspvar::resetVariable()
 {
     size_t domSize = _domain.size();
-    for(size_t i = 0; i != domSize; i++)
+    for(size_t i = 0; i < domSize; i++)
     {
         _domain[i] = 0;
     }

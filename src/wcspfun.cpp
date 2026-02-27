@@ -58,7 +58,7 @@ double wcspfun::getMin()
 
     if (size > 1)
     {
-        for (size_t i = 1; i != validValues.size(); i++)
+        for (size_t i = 1; i < validValues.size(); i++)
         {
             double currentValue = _costs[validValues[i]];
             if (currentValue < min)
@@ -79,7 +79,7 @@ double wcspfun::getMax()
 
     if (size > 1)
     {
-        for (size_t i = 1; i != validValues.size(); i++)
+        for (size_t i = 1; i < validValues.size(); i++)
         {
             double currentValue = _costs[validValues[i]];
             if (currentValue > max)
@@ -144,7 +144,7 @@ vector<int> wcspfun::validValues()
         else if (assignedX && !assignedY)
         {
             int i = _scope[0]->getValue();
-            for (size_t j = 0; j != domY; j++)
+            for (size_t j = 0; j < domY; j++)
             {
                 if (pDomY[j] != -1)
                 {
@@ -156,7 +156,7 @@ vector<int> wcspfun::validValues()
         else if (!assignedX && assignedY)
         {
             int j = _scope[1]->getValue();
-            for (size_t i = 0; i != domX; i++)
+            for (size_t i = 0; i < domX; i++)
             {
                 if (pDomX[i] != -1)
                 {
@@ -167,9 +167,9 @@ vector<int> wcspfun::validValues()
 
         else
         {
-            for (size_t i = 0; i != domX; i++)
+            for (size_t i = 0; i < domX; i++)
             {
-                for (size_t j = 0; j != domY; j++)
+                for (size_t j = 0; j < domY; j++)
                 {
                     if (pDomX[i] != -1 && pDomY[j] != -1)
                     {
@@ -192,7 +192,7 @@ vector<int> wcspfun::validValues()
         }
         else
         {
-            for (size_t i = 0; i != domX; i++)
+            for (size_t i = 0; i < domX; i++)
             {
                 if (pDomX[i] != -1)
                 {
