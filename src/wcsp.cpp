@@ -50,11 +50,13 @@ wcsp::~wcsp()
     for(size_t i = 0; i < _variables.size(); i++) {
         delete _variables[i];
     }
+    _variables.clear();
 
     //delete functions
     for(size_t i = 0; i < _functions.size(); i++) {
         delete _functions[i];
     }
+    _functions.clear();
 }
 
 double wcsp::getUpperBound()
