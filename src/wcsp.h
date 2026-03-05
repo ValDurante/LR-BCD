@@ -3,7 +3,7 @@
 #include <memory>
 #include <iostream>
 #include <fstream>
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 #include "wcspfun.h"
 #include "wcspvar.h"
 
