@@ -9,6 +9,7 @@ Compilation requires git and cmake.
 Required library: Eigen3
 
 Debian derived: sudo apt install libeigen3-dev
+
 MacOS: brew install eigen
 
 # lrbcd compilation
