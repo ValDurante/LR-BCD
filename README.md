@@ -8,14 +8,15 @@ Compilation requires git and cmake.
 
 Required library: Eigen3
 
-sudo apt install libeigen3-dev
+Debian derived: sudo apt install libeigen3-dev
+MacOS: brew install eigen
 
 # lrbcd compilation
 
 ```bash
 mkdir build 
 cd build 
-cmake -DCMAKE_BUILD_TYPE=<Release/Debug> .. 
+cmake .. 
 cmake --build .
 ``` 
 
@@ -39,8 +40,7 @@ cmake --build .
 	rounding -nbR: "n" for computing the best integer solution value
 	with nbR = n rounding schemes
 
-	output file -f: return a file with all the rounded integer solutions and their corresponding
-	objective values
+	output file -f: return a file with the best rounded integer solutions and its objective value
 
 example : ./lrbcd <instance.wcsp> 2 -it=-1 -k=-1 -nbR=10 -f=sol.txt
 
