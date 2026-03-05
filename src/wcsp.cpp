@@ -1,8 +1,8 @@
 //wcsp.cpp
 #include <iostream>
 #include <math.h>
-#include <eigen3/Eigen/Sparse>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
 #include "wcspfun.h"
 #include "wcspvar.h"
 #include "wcsp.h"

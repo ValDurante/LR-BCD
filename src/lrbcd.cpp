@@ -7,12 +7,13 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <cmath>
 #include <float.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <chrono>
+#include <cassert>
 
 #include "wcsp.h"
 #include "wcspreader.hh"

@@ -14,5 +14,8 @@ file(GLOB lrbcd_src CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/src/*.h"
     "${CMAKE_CURRENT_LIST_DIR}/src/*.hh"
 )
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 add_executable(lrbcd ${lrbcd_src})
+
+target_link_libraries(lrbcd PRIVATE Eigen3::Eigen)
